@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Department QR Code Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root{
+      --bg:#f4f7fb;
+      --card:#ffffff;
+      --text:#16324f;
+      --muted:#5f7287;
+      --line:#d7e1ea;
+      --accent:#0f6cbd;
+      --accent2:#0a4f8a;
+      --ok:#127c42;
+      --shadow:0 10px 28px rgba(16,42,67,.08);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Arial, Helvetica, sans-serif;
+      background:linear-gradient(180deg,#eef5fb 0%, #f8fbfd 100%);
+      color:var(--text);
+    }
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:28px 18px 36px;
+    }
+    .hero{
+      background:linear-gradient(135deg,#0f6cbd 0%, #0a4f8a 100%);
+      color:#fff;
+      border-radius:24px;
+      padding:26px 24px;
+      box-shadow:var(--shadow);
+      margin-bottom:22px;
+    }
+    .hero h1{
+      margin:0 0 8px;
+      font-size:28px;
+      line-height:1.2;
+    }
+    .hero p{
+      margin:0;
+      font-size:15px;
+      line-height:1.6;
+      max-width:760px;
+      opacity:.96;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:1.15fr .85fr;
+      gap:20px;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:20px;
+    }
+    .section-title{
+      margin:0 0 16px;
+      font-size:18px;
+      font-weight:700;
+    }
+    .sub{
+      font-size:13px;
+      color:var(--muted);
+      margin-top:-8px;
+      margin-bottom:16px;
+      line-height:1.5;
+    }
+    .form-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:14px;
+    }
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .field.full{
+      grid-column:1 / -1;
+    }
+    label{
+      font-size:13px;
+      font-weight:700;
+      color:var(--text);
+    }
+    input, select, textarea{
+      width:100%;
+      border:1px solid #cfd9e3;
+      border-radius:12px;
+      padding:11px 12px;
+      font-size:14px;
+      background:#fff;
+      color:#17324d;
+      outline:none;
+    }
+    input:focus, select:focus, textarea:focus{
+      border-color:#7ab4e6;
+      box-shadow:0 0 0 3px rgba(15,108,189,.12);
+    }
+    textarea{
+      resize:vertical;
+      min-height:98px;
+    }
+    .actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:16px;
+    }
+    button{
+      border:none;
+      border-radius:12px;
+      padding:11px 16px;
+      font-size:14px;
+      font-weight:700;
+      cursor:pointer;
+      transition:.15s ease;
+    }
+    .btn-primary{
+      background:var(--accent);
+      color:#fff;
+    }
+    .btn-primary:hover{background:var(--accent2)}
+    .btn-secondary{
+      background:#eaf3fb;
+      color:var(--accent2);
+    }
+    .btn-secondary:hover{background:#dcecf9}
+    .btn-success{
+      background:#eaf8ef;
+      color:var(--ok);
+    }
+    .btn-success:hover{background:#d9f0e1}
+    .preview{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:14px;
+      text-align:center;
+      min-height:100%;
+    }
+    .preview-box{
+      width:100%;
+      min-height:430px;
+      border:1px dashed #c7d5e2;
+      border-radius:18px;
+      background:#fbfdff;
+      padding:18px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .qr-card{
+      width:100%;
+      max-width:420px;
+      background:#fff;
+      border:1px solid #dde7ef;
+      border-radius:20px;
+      padding:20px;
+      box-shadow:0 8px 24px rgba(16,42,67,.06);
+    }
+    .dept{
+      font-size:19px;
+      font-weight:800;
+      line-height:1.35;
+      margin-bottom:6px;
+    }
+    .caption{
+      font-size:13px;
+      color:var(--muted);
+      line-height:1.45;
+      margin-bottom:14px;
+      white-space:pre-wrap;
+    }
+    #qrcode{
+      display:flex;
+      justify-content:center;
+      padding:10px 0 8px;
+      min-height:220px;
+    }
+    #qrcode img, #qrcode canvas{
+      max-width:100%;
+      height:auto;
+    }
+    .target{
+      margin-top:10px;
+      font-size:12px;
+      color:#4b6075;
+      word-break:break-word;
+    }
+    .hint{
+      margin-top:8px;
+      font-size:12px;
+      color:var(--muted);
+    }
+    .pill{
+      display:inline-block;
+      padding:6px 10px;
+      background:#eef6fd;
+      border:1px solid #d6e9f9;
+      border-radius:999px;
+      font-size:12px;
+      color:#325c83;
+      margin-top:2px;
+    }
+    .footer-note{
+      margin-top:16px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.5;
+    }
+    @media (max-width: 860px){
+      .grid{grid-template-columns:1fr}
+      .form-grid{grid-template-columns:1fr}
+      .hero h1{font-size:24px}
+      .preview-box{min-height:unset}
+    }
+    @media print{
+      body{background:#fff}
+      .hero, .card:first-child{display:none}
+      .grid{display:block}
+      .card{
+        box-shadow:none;
+        border:none;
+        padding:0;
+      }
+      .preview-box{
+        border:none;
+        padding:0;
+        background:#fff;
+      }
+      .qr-card{
+        box-shadow:none;
+        border:1px solid #bbb;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>Department QR Code Generator</h1>
+      <p>Create clean, branded QR codes for links, forms, documents, registration pages, patient education materials, internal SOP pages, or event sign-ins. Generate, download, and print in one place.</p>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2 class="section-title">QR Settings</h2>
+        <div class="sub">Fill in the destination and optional department branding. This works well for official use because the output card includes a title and scan description.</div>
+
+        <div class="form-grid">
+          <div class="field full">
+            <label for="qrText">Link / Text to encode</label>
+            <textarea id="qrText" placeholder="Example: https://your-department-site.example/form"></textarea>
+          </div>
+
+          <div class="field">
+            <label for="deptName">Department / Unit name</label>
+            <input id="deptName" type="text" value="Your Department Name" />
+          </div>
+
+          <div class="field">
+            <label for="labelText">Short caption</label>
+            <input id="labelText" type="text" value="Scan to open the official page" />
+          </div>
+
+          <div class="field">
+            <label for="size">QR size</label>
+            <select id="size">
+              <option value="180">Small</option>
+              <option value="220" selected>Medium</option>
+              <option value="280">Large</option>
+              <option value="340">Extra Large</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="errorLevel">Error correction</label>
+            <select id="errorLevel">
+              <option value="L">Low</option>
+              <option value="M" selected>Medium</option>
+              <option value="Q">Quartile</option>
+              <option value="H">High</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn-primary" onclick="generateQR()">Generate QR Code</button>
+          <button class="btn-success" onclick="downloadQR()">Download PNG</button>
+          <button class="btn-secondary" onclick="window.print()">Print</button>
+          <button class="btn-secondary" onclick="resetForm()">Reset</button>
+          <button class="btn-secondary" onclick="loadSample()">Load Sample</button>
+        </div>
+
+        <div class="footer-note">
+          Tip: for the best scanning result, use a real URL and keep the caption short. For posters or counters, choose Large or Extra Large.
+        </div>
+      </div>
+
+      <div class="card preview">
+        <h2 class="section-title">Preview</h2>
+        <span class="pill">Ready for poster, counter card, notice board, or print handout</span>
+
+        <div class="preview-box">
+          <div class="qr-card" id="captureArea">
+            <div class="dept" id="previewDept">Your Department Name</div>
+            <div class="caption" id="previewCaption">Scan to open the official page</div>
+            <div id="qrcode"></div>
+            <div class="target" id="previewTarget">No content yet</div>
+            <div class="hint">Please scan using your phone camera or any QR scanner.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let qrInstance = null;
+
+    const el = (id) => document.getElementById(id);
+
+    function getErrorLevel(level){
+      const map = {
+        L: QRCode.CorrectLevel.L,
+        M: QRCode.CorrectLevel.M,
+        Q: QRCode.CorrectLevel.Q,
+        H: QRCode.CorrectLevel.H
+      };
+      return map[level] || QRCode.CorrectLevel.M;
+    }
+
+    function sanitizeText(text){
+      return (text || "").trim();
+    }
+
+    function generateQR(){
+      const text = sanitizeText(el("qrText").value);
+      const dept = sanitizeText(el("deptName").value) || "Your Department Name";
+      const caption = sanitizeText(el("labelText").value) || "Scan to open the official page";
+      const size = parseInt(el("size").value, 10) || 220;
+      const err = el("errorLevel").value;
+
+      el("previewDept").textContent = dept;
+      el("previewCaption").textContent = caption;
+      el("previewTarget").textContent = text || "No content yet";
+
+      const holder = el("qrcode");
+      holder.innerHTML = "";
+
+      if(!text){
+        holder.innerHTML = '<div style="font-size:13px;color:#6b7f93;line-height:1.6;">Enter a link or text first, then click <b>Generate QR Code</b>.</div>';
+        qrInstance = null;
+        return;
+      }
+
+      qrInstance = new QRCode(holder, {
+        text: text,
+        width: size,
+        height: size,
+        correctLevel: getErrorLevel(err)
+      });
+    }
+
+    function downloadQR(){
+      const holder = el("qrcode");
+      const canvas = holder.querySelector("canvas");
+      const img = holder.querySelector("img");
+      const dept = sanitizeText(el("deptName").value).replace(/[^a-z0-9]+/gi, "_") || "department_qr";
+
+      if(canvas){
+        const a = document.createElement("a");
+        a.href = canvas.toDataURL("image/png");
+        a.download = dept + ".png";
+        a.click();
+        return;
+      }
+
+      if(img){
+        const a = document.createElement("a");
+        a.href = img.src;
+        a.download = dept + ".png";
+        a.click();
+        return;
+      }
+
+      alert("Please generate the QR code first.");
+    }
+
+    function resetForm(){
+      el("qrText").value = "";
+      el("deptName").value = "Your Department Name";
+      el("labelText").value = "Scan to open the official page";
+      el("size").value = "220";
+      el("errorLevel").value = "M";
+      el("qrcode").innerHTML = "";
+      el("previewDept").textContent = "Your Department Name";
+      el("previewCaption").textContent = "Scan to open the official page";
+      el("previewTarget").textContent = "No content yet";
+      qrInstance = null;
+    }
+
+    function loadSample(){
+      el("qrText").value = "https://example.org/department-registration";
+      el("deptName").value = "Unit Kesihatan Primer";
+      el("labelText").value = "Scan for registration / official access";
+      el("size").value = "220";
+      el("errorLevel").value = "M";
+      generateQR();
+    }
+
+    window.onload = () => {
+      loadSample();
+    };
+  </script>
+</body>
+</html>
