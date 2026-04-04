@@ -737,12 +737,34 @@ if (!qrExists) {
     el("labelText").addEventListener("input", updatePreviewText);
     el("qrText").addEventListener("input", autoRefreshQR);
 
-    el("size").addEventListener("change", autoRefreshQR);
+    el("size").addEventListener("change", handleSizeRules);
     el("errorLevel").addEventListener("change", autoRefreshQR);
     el("logoSize").addEventListener("change", autoRefreshQR);
     el("logoMode").addEventListener("change", autoRefreshQR);
     el("toggleUrlText").addEventListener("change", updateUrlVisibility);
 
+    function handleSizeRules() {
+  const size = el("size").value;
+  const logoMode = el("logoMode");
+  const logoSize = el("logoSize");
+  const logoUploadField = el("logoUploadField");
+  const logoSizeField = el("logoSizeField");
+
+  if (size === "1000") {
+    logoMode.value = "none";
+    logoMode.disabled = true;
+    logoSize.disabled = true;
+    logoUploadField.style.display = "none";
+    logoSizeField.style.display = "none";
+    showWarn("For 1000px presentation size, logo is disabled to improve scan reliability.");
+  } else {
+    logoMode.disabled = false;
+    logoSize.disabled = false;
+    showWarn("");
+  }
+
+  autoRefreshQR();
+}
     function generateQR() {
       const text = sanitizeText(el("qrText").value);
      const dept = sanitizeText(el("deptName").value);
@@ -914,7 +936,7 @@ qrImg.src = img.src;
 
     window.onload = () => {
       updatePreviewText();
-      updateLogoUI();
+      handleSizeRules();
       updateUrlVisibility();
     };
   </script>
