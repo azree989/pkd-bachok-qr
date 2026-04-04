@@ -756,14 +756,24 @@ if (!qrExists) {
     logoSize.disabled = true;
     logoUploadField.style.display = "none";
     logoSizeField.style.display = "none";
-    showWarn("For 1000px presentation size, logo is disabled to improve scan reliability.");
   } else {
+    if (logoMode.disabled && logoMode.value === "none") {
+      logoMode.value = "standard";
+    }
     logoMode.disabled = false;
     logoSize.disabled = false;
-    showWarn("");
   }
 
-  autoRefreshQR();
+  generateQR();
+  updatePreviewText();
+  updateLogoUI();
+  updateUrlVisibility();
+
+  if (size === "1000") {
+    showWarn("For 1000px presentation size, logo is disabled to improve scan reliability.");
+  } else {
+    showWarn("");
+  }
 }
     function generateQR() {
       const text = sanitizeText(el("qrText").value);
