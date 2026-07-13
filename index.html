@@ -509,8 +509,11 @@
           </div>
 
           <div class="field">
-            <label for="size">QR Size</label>
+            <label for="size">Preview Size</label>
             <select id="size">
+              <div class="mini">
+                   Downloaded PNG will always be generated in high resolution.
+                  </div>
               <option value="220">220px</option>
               <option value="280" selected>280px</option>
               <option value="340">340px</option>
@@ -744,36 +747,9 @@ if (!qrExists) {
     el("toggleUrlText").addEventListener("change", updateUrlVisibility);
 
     function handleSizeRules() {
-  const size = el("size").value;
-  const logoMode = el("logoMode");
-  const logoSize = el("logoSize");
-  const logoUploadField = el("logoUploadField");
-  const logoSizeField = el("logoSizeField");
-
-  if (size === "1000") {
-    logoMode.value = "none";
-    logoMode.disabled = true;
-    logoSize.disabled = true;
-    logoUploadField.style.display = "none";
-    logoSizeField.style.display = "none";
-  } else {
-    if (logoMode.disabled && logoMode.value === "none") {
-      logoMode.value = "standard";
-    }
-    logoMode.disabled = false;
-    logoSize.disabled = false;
-  }
-
-  generateQR();
-  updatePreviewText();
-  updateLogoUI();
+  autoRefreshQR();
   updateUrlVisibility();
-
-  if (size === "1000") {
-    showWarn("For 1000px presentation size, logo is disabled to improve scan reliability.");
-  } else {
-    showWarn("");
-  }
+  showWarn("");
 }
     function generateQR() {
       const text = sanitizeText(el("qrText").value);
@@ -828,99 +804,301 @@ const caption = sanitizeText(el("labelText").value);
       ctx.quadraticCurveTo(x, y, x + r, y);
       ctx.closePath();
     }
+function loadImageForExport(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
 
-    function downloadQR() {
-  const holder = el("qrcode");
-  const canvas = holder.querySelector("canvas");
-  const img = holder.querySelector("img");
-  const typedName = sanitizeText(el("deptName").value).replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "");
-const now = new Date();
-const stamp = now.getFullYear()
-  + String(now.getMonth() + 1).padStart(2, "0")
-  + String(now.getDate()).padStart(2, "0")
-  + "_"
-  + String(now.getHours()).padStart(2, "0")
-  + String(now.getMinutes()).padStart(2, "0")
-  + String(now.getSeconds()).padStart(2, "0");
-const dept = (typedName || "pkd_bachok_qr_code") + "_" + stamp;
-  const size = parseInt(el("size").value, 10) || 280;
-  const logoPercent = parseInt(el("logoSize").value, 10) || 0;
-  const activeLogo = getActiveLogo();
-
-  if (!canvas && !img) {
-    alert("Sila jana kod QR terlebih dahulu.");
-    return;
-  }
-
-  const exportCanvas = document.createElement("canvas");
-  exportCanvas.width = size;
-  exportCanvas.height = size;
-  const ctx = exportCanvas.getContext("2d");
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, size, size);
-
-  const saveFinal = () => {
-    const a = document.createElement("a");
-    a.href = exportCanvas.toDataURL("image/png");
-    a.download = dept + ".png";
-    a.click();
-  };
-
-  const drawLogoAndSave = () => {
-    if (!activeLogo || logoPercent === 0) {
-      saveFinal();
-      return;
+    // Required for external images such as the standard GitHub logo.
+    if (!src.startsWith("data:")) {
+      image.crossOrigin = "anonymous";
     }
 
-    const logo = new Image();
-logo.crossOrigin = "anonymous";
-logo.onload = function() {
-  const inner = Math.round(size * logoPercent / 100);
-  const pad = Math.max(6, Math.round(inner * 0.18));
-  const outer = inner + pad * 2;
-  const x = (size - outer) / 2;
-  const y = (size - outer) / 2;
+    image.onload = () => resolve(image);
 
-  ctx.fillStyle = "#ffffff";
-  drawRoundRect(ctx, x, y, outer, outer, 16);
-  ctx.fill();
-  ctx.drawImage(logo, x + pad, y + pad, inner, inner);
+    image.onerror = () => {
+      reject(new Error("The image could not be loaded."));
+    };
 
-  try {
-    saveFinal();
-  } catch (err) {
-    console.error("PNG download failed:", err);
-    alert("PNG download failed. This is likely due to browser security on external logo images.");
-  }
-};
-logo.onerror = function(err) {
-  console.error("Logo load failed:", err);
-  alert("Logo could not be loaded for PNG download.");
-};
-logo.src = activeLogo;
-  };
+    image.src = src;
+  });
+}
+    async function downloadQR() {
+  const text = sanitizeText(el("qrText").value);
 
-  if (canvas) {
-    ctx.drawImage(canvas, 0, 0, size, size);
-    drawLogoAndSave();
+  if (!text) {
+    alert("Sila masukkan pautan atau teks untuk menjana kod QR.");
     return;
   }
 
-  if (img) {
-    const qrImg = new Image();
-qrImg.crossOrigin = "anonymous";
-qrImg.onload = function() {
-  ctx.drawImage(qrImg, 0, 0, size, size);
-  drawLogoAndSave();
-};
-qrImg.onerror = function(err) {
-  console.error("QR image load failed:", err);
-  alert("QR image could not be loaded for PNG download.");
-};
-qrImg.src = img.src;
+  const typedName = sanitizeText(el("deptName").value)
+    .replace(/[^a-z0-9]+/gi, "_")
+    .replace(/^_+|_+$/g, "");
+
+  const now = new Date();
+
+  const stamp =
+    now.getFullYear() +
+    String(now.getMonth() + 1).padStart(2, "0") +
+    String(now.getDate()).padStart(2, "0") +
+    "_" +
+    String(now.getHours()).padStart(2, "0") +
+    String(now.getMinutes()).padStart(2, "0") +
+    String(now.getSeconds()).padStart(2, "0");
+
+  const fileName =
+    (typedName || "pkd_bachok_qr_code") +
+    "_" +
+    stamp +
+    ".png";
+
+  /*
+   * High-resolution export settings.
+   *
+   * QR itself:     2000 × 2000 px
+   * Quiet zone:     160 px on every side
+   * Final PNG:     2320 × 2320 px
+   */
+  const qrExportSize = 2000;
+  const quietZone = 160;
+  const finalSize = qrExportSize + quietZone * 2;
+
+  const logoPercent =
+    parseInt(el("logoSize").value, 10) || 12;
+
+  const activeLogo = getActiveLogo();
+
+  /*
+   * A centre logo obscures part of the QR.
+   * High error correction is therefore used automatically
+   * whenever a logo is present.
+   */
+  const effectiveErrorLevel = activeLogo
+    ? QRCode.CorrectLevel.H
+    : getErrorLevel(el("errorLevel").value);
+
+  let temporaryHolder = null;
+
+  try {
+    /*
+     * Generate a completely new high-resolution QR.
+     * Do not enlarge the small preview canvas.
+     */
+    temporaryHolder = document.createElement("div");
+
+    temporaryHolder.style.position = "fixed";
+    temporaryHolder.style.left = "-10000px";
+    temporaryHolder.style.top = "-10000px";
+    temporaryHolder.style.width = qrExportSize + "px";
+    temporaryHolder.style.height = qrExportSize + "px";
+    temporaryHolder.style.opacity = "0";
+    temporaryHolder.style.pointerEvents = "none";
+
+    document.body.appendChild(temporaryHolder);
+
+    new QRCode(temporaryHolder, {
+      text: text,
+      width: qrExportSize,
+      height: qrExportSize,
+      correctLevel: effectiveErrorLevel
+    });
+
+    /*
+     * Allow QRCode.js time to finish creating its canvas.
+     */
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(resolve);
+      });
+    });
+
+    const generatedCanvas =
+      temporaryHolder.querySelector("canvas");
+
+    const generatedImage =
+      temporaryHolder.querySelector("img");
+
+    const qrSource =
+      generatedCanvas || generatedImage;
+
+    if (!qrSource) {
+      throw new Error(
+        "The high-resolution QR canvas was not generated."
+      );
+    }
+
+    const exportCanvas =
+      document.createElement("canvas");
+
+    exportCanvas.width = finalSize;
+    exportCanvas.height = finalSize;
+
+    const ctx = exportCanvas.getContext("2d", {
+      alpha: false
+    });
+
+    /*
+     * White background and proper quiet zone.
+     */
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, finalSize, finalSize);
+
+    /*
+     * QR modules must remain sharp.
+     */
+    ctx.imageSmoothingEnabled = false;
+
+    ctx.drawImage(
+      qrSource,
+      quietZone,
+      quietZone,
+      qrExportSize,
+      qrExportSize
+    );
+
+    if (activeLogo && logoPercent > 0) {
+      const logo = await loadImageForExport(activeLogo);
+
+      /*
+       * Maximum area reserved for the actual logo artwork.
+       */
+      const logoArea =
+        Math.round(qrExportSize * logoPercent / 100);
+
+      const padding =
+        Math.max(28, Math.round(logoArea * 0.18));
+
+      const backgroundSize =
+        logoArea + padding * 2;
+
+      const backgroundX =
+        quietZone +
+        (qrExportSize - backgroundSize) / 2;
+
+      const backgroundY =
+        quietZone +
+        (qrExportSize - backgroundSize) / 2;
+
+      const cornerRadius =
+        Math.max(
+          30,
+          Math.round(backgroundSize * 0.09)
+        );
+
+      /*
+       * Draw a clean white background behind the logo.
+       */
+      ctx.fillStyle = "#ffffff";
+
+      drawRoundRect(
+        ctx,
+        backgroundX,
+        backgroundY,
+        backgroundSize,
+        backgroundSize,
+        cornerRadius
+      );
+
+      ctx.fill();
+
+      /*
+       * Preserve the logo's original aspect ratio.
+       * This prevents the crest and wording from being
+       * stretched into a square.
+       */
+      const originalWidth =
+        logo.naturalWidth || logo.width;
+
+      const originalHeight =
+        logo.naturalHeight || logo.height;
+
+      const scale = Math.min(
+        logoArea / originalWidth,
+        logoArea / originalHeight
+      );
+
+      const logoDrawWidth =
+        Math.round(originalWidth * scale);
+
+      const logoDrawHeight =
+        Math.round(originalHeight * scale);
+
+      const logoX =
+        quietZone +
+        (qrExportSize - logoDrawWidth) / 2;
+
+      const logoY =
+        quietZone +
+        (qrExportSize - logoDrawHeight) / 2;
+
+      /*
+       * High-quality smoothing is appropriate only for
+       * the photographic/raster logo—not the QR modules.
+       */
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      ctx.drawImage(
+        logo,
+        logoX,
+        logoY,
+        logoDrawWidth,
+        logoDrawHeight
+      );
+    }
+
+    const pngBlob = await new Promise((resolve) => {
+      exportCanvas.toBlob(
+        resolve,
+        "image/png",
+        1
+      );
+    });
+
+    if (!pngBlob) {
+      throw new Error(
+        "The PNG file could not be created."
+      );
+    }
+
+    const objectUrl =
+      URL.createObjectURL(pngBlob);
+
+    const downloadLink =
+      document.createElement("a");
+
+    downloadLink.href = objectUrl;
+    downloadLink.download = fileName;
+
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    downloadLink.remove();
+
+    setTimeout(() => {
+      URL.revokeObjectURL(objectUrl);
+    }, 1500);
+
+  } catch (error) {
+    console.error(
+      "High-resolution PNG download failed:",
+      error
+    );
+
+    alert(
+      "PNG beresolusi tinggi tidak dapat dijana. " +
+      "Sila pastikan imej logo boleh diakses dan cuba semula."
+    );
+
+  } finally {
+    if (
+      temporaryHolder &&
+      temporaryHolder.parentNode
+    ) {
+      temporaryHolder.parentNode.removeChild(
+        temporaryHolder
+      );
+    }
   }
 }
-
     function resetForm() {
   el("qrText").value = "";
   el("deptName").value = "";
