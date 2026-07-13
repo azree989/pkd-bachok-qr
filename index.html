@@ -502,6 +502,10 @@
       max-width: 100%;
       align-items: center;
       justify-content: center;
+      padding: 12px;
+      border: 2px solid #b8c5cf;
+      border-radius: 10px;
+      background: #ffffff;
     }
 
     #qrcode {
@@ -701,6 +705,12 @@
         page-break-inside: avoid;
       }
 
+      .qr-wrap {
+        padding: 4mm;
+        border: 0.5mm solid #9daab4;
+        border-radius: 2mm;
+      }
+
       .target {
         font-size: 8pt;
       }
@@ -720,8 +730,8 @@
         <h1>Standard Customisable QR Code Generator</h1>
         <p>
           Generate clean, reliable QR codes for official links, registration forms,
-          Google Sites and digital resources. High-resolution PNG export is applied
-          automatically.
+          Google Sites and digital resources. High-resolution PNG export and
+          professional colour options are applied consistently.
         </p>
       </div>
     </header>
@@ -794,6 +804,18 @@
             </select>
             <p class="control-note" id="errorLevelNote">
               Higher correction improves resilience but creates a denser QR.
+            </p>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="qrColor">QR Colour</label>
+            <select id="qrColor">
+              <option value="#000000">Standard Black</option>
+              <option value="#0D2D49" selected>Professional Navy</option>
+              <option value="#123B5E">Institutional Blue</option>
+            </select>
+            <p class="control-note">
+              Dark colours on a white background provide the best scan reliability.
             </p>
           </div>
 
@@ -1068,7 +1090,7 @@
         text: text,
         width: size,
         height: size,
-        colorDark: "#000000",
+        colorDark: el("qrColor").value,
         colorLight: "#ffffff",
         correctLevel: correction
       });
@@ -1225,7 +1247,7 @@
           text: text,
           width: qrExportSize,
           height: qrExportSize,
-          colorDark: "#000000",
+          colorDark: el("qrColor").value,
           colorLight: "#ffffff",
           correctLevel: correction
         });
@@ -1394,6 +1416,7 @@
       el("labelText").value = "";
       el("size").value = "280";
       el("errorLevel").value = "M";
+      el("qrColor").value = "#0D2D49";
       el("logoMode").value = "standard";
       el("logoSize").value = "12";
       el("logoFile").value = "";
@@ -1480,6 +1503,7 @@
       el("size").addEventListener("change", generateQR);
 
       el("errorLevel").addEventListener("change", generateQR);
+      el("qrColor").addEventListener("change", generateQR);
 
       el("logoMode").addEventListener("change", () => {
         syncLogoControls();
