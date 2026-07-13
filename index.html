@@ -6,6 +6,7 @@
     name="viewport"
     content="width=device-width, initial-scale=1.0, viewport-fit=cover"
   />
+
   <title>Standard QR Code Generator</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,13 +16,18 @@
     rel="stylesheet"
   >
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- QR generator -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode_UTF8.js"></script>
+
+  <!-- QR scanner -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
   <style>
     :root {
       --page-bg: #edf1f5;
       --surface: #ffffff;
-      --surface-soft: #f6f8fa;
+      --surface-soft: #f5f7f9;
       --navy-950: #0a2238;
       --navy-900: #0d2d49;
       --navy-800: #123b5e;
@@ -31,10 +37,12 @@
       --muted: #5f7181;
       --line: #cfd8e1;
       --line-dark: #aebbc7;
-      --danger: #8c2f2f;
-      --danger-bg: #fff3f3;
+      --success: #146c43;
+      --success-bg: #edf8f2;
       --warning: #7a5100;
       --warning-bg: #fff8e7;
+      --danger: #9b2c2c;
+      --danger-bg: #fff1f1;
       --focus: rgba(21, 95, 157, 0.18);
       --shadow: 0 12px 28px rgba(11, 34, 55, 0.08);
       --radius-lg: 12px;
@@ -44,6 +52,10 @@
 
     * {
       box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
     }
 
     html {
@@ -59,6 +71,10 @@
         linear-gradient(180deg, #e9eef3 0%, #f5f7f9 45%, #edf1f5 100%);
     }
 
+    body.modal-open {
+      overflow: hidden;
+    }
+
     button,
     input,
     select,
@@ -67,7 +83,7 @@
     }
 
     .page-shell {
-      width: min(1180px, calc(100% - 32px));
+      width: min(1220px, calc(100% - 32px));
       margin: 0 auto;
       padding: 24px 0 42px;
     }
@@ -83,7 +99,12 @@
       padding: 24px 26px;
       color: #ffffff;
       background:
-        linear-gradient(110deg, var(--navy-950) 0%, var(--navy-800) 72%, #175987 100%);
+        linear-gradient(
+          110deg,
+          var(--navy-950) 0%,
+          var(--navy-800) 72%,
+          #175987 100%
+        );
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow);
@@ -120,7 +141,7 @@
     }
 
     .hero p {
-      max-width: 820px;
+      max-width: 850px;
       margin: 0;
       font-size: 13px;
       line-height: 1.65;
@@ -133,7 +154,7 @@
 
     .main-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+      grid-template-columns: minmax(0, 1.1fr) minmax(370px, 0.9fr);
       gap: 18px;
       align-items: start;
     }
@@ -263,9 +284,10 @@
       box-shadow: 0 0 0 3px var(--focus);
     }
 
-    select:disabled {
-      color: #516474;
-      background: #eef2f5;
+    select:disabled,
+    input:disabled,
+    button:disabled {
+      opacity: 0.68;
       cursor: not-allowed;
     }
 
@@ -278,6 +300,29 @@
 
     .control-note strong {
       color: var(--navy-800);
+    }
+
+    .inline-status {
+      display: none;
+      margin-top: 2px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .inline-status.good {
+      display: block;
+      color: var(--success);
+      background: var(--success-bg);
+      border: 1px solid #bddfcf;
+    }
+
+    .inline-status.bad {
+      display: block;
+      color: var(--danger);
+      background: var(--danger-bg);
+      border: 1px solid #ebc3c3;
     }
 
     input[type="file"] {
@@ -333,17 +378,66 @@
     }
 
     /* =========================================================
+       SIMPLE GUIDANCE
+       ========================================================= */
+
+    .guidance-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .guidance-card {
+      min-width: 0;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: #f8fafb;
+    }
+
+    .guidance-label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.045em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .guidance-value {
+      font-size: 13px;
+      line-height: 1.4;
+      font-weight: 800;
+      color: var(--navy-900);
+    }
+
+    .quality-good {
+      color: var(--success);
+    }
+
+    .quality-caution {
+      color: var(--warning);
+    }
+
+    .quality-poor {
+      color: var(--danger);
+    }
+
+    /* =========================================================
        ACTIONS
        ========================================================= */
 
     .actions {
       display: grid;
-      grid-template-columns: 1.2fr 1.1fr 0.65fr;
+      grid-template-columns: 1.35fr 0.9fr 0.9fr 0.58fr;
       gap: 9px;
       margin-top: 16px;
     }
 
-    button {
+    button,
+    .file-action {
       min-height: 44px;
       border: 1px solid transparent;
       border-radius: var(--radius-sm);
@@ -359,11 +453,13 @@
         transform 0.08s ease;
     }
 
-    button:active {
+    button:active,
+    .file-action:active {
       transform: translateY(1px);
     }
 
-    button:focus-visible {
+    button:focus-visible,
+    .file-action:focus-within {
       outline: 3px solid var(--focus);
       outline-offset: 2px;
     }
@@ -441,7 +537,7 @@
     .preview-box {
       display: flex;
       width: 100%;
-      min-height: 486px;
+      min-height: 500px;
       align-items: center;
       justify-content: center;
       padding: 14px;
@@ -453,17 +549,13 @@
 
     .qr-card {
       width: 100%;
-      max-width: 420px;
+      max-width: 430px;
       padding: 22px 20px 20px;
       border: 1px solid #cbd6df;
       border-radius: var(--radius-md);
       background: #ffffff;
       box-shadow: 0 8px 20px rgba(17, 43, 65, 0.07);
       text-align: center;
-    }
-
-    .brand-mark {
-      display: none;
     }
 
     .dept {
@@ -496,8 +588,7 @@
       padding: 6px 0;
     }
 
-    .qr-wrap {
-      position: relative;
+    .qr-frame {
       display: inline-flex;
       max-width: 100%;
       align-items: center;
@@ -508,43 +599,22 @@
       background: #ffffff;
     }
 
-    #qrcode {
-      display: flex;
-      min-width: 220px;
-      min-height: 220px;
-      max-width: 100%;
-      align-items: center;
-      justify-content: center;
-    }
-
-    #qrcode img,
-    #qrcode canvas {
+    #qrcodeCanvas {
       display: block;
       max-width: 100%;
       height: auto;
+      background: #ffffff;
     }
 
-    .center-logo {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      transform: translate(-50%, -50%);
-      border: 1px solid #dce3e9;
-      border-radius: 12px;
-      background: #ffffff;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-    }
-
-    .center-logo img {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      background: #ffffff;
+    .empty-preview {
+      width: 230px;
+      padding: 44px 18px;
+      border: 1px dashed #c7d1da;
+      border-radius: 6px;
+      color: #728391;
+      background: #fafcfd;
+      font-size: 12px;
+      line-height: 1.55;
     }
 
     .target {
@@ -566,6 +636,143 @@
     }
 
     /* =========================================================
+       SCANNER MODAL
+       ========================================================= */
+
+    .modal-backdrop {
+      position: fixed;
+      z-index: 9999;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(4, 19, 31, 0.72);
+    }
+
+    .scanner-dialog {
+      width: min(560px, 100%);
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+      border: 1px solid #9fb0bd;
+      border-radius: 12px;
+      background: #ffffff;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+    }
+
+    .dialog-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dialog-title {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.3;
+      color: var(--navy-950);
+    }
+
+    .dialog-subtitle {
+      margin: 5px 0 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    .close-button {
+      min-width: 38px;
+      min-height: 38px;
+      padding: 5px;
+      border: 1px solid #c7d1d9;
+      border-radius: 6px;
+      color: var(--navy-900);
+      background: #f2f5f7;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .dialog-body {
+      padding: 16px 18px 18px;
+    }
+
+    #qrReader {
+      width: 100%;
+      min-height: 240px;
+      overflow: hidden;
+      border: 1px solid #c8d2da;
+      border-radius: 8px;
+      background: #f4f7f9;
+    }
+
+    #qrReader video {
+      border-radius: 7px;
+    }
+
+    .scanner-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-top: 12px;
+    }
+
+    .file-action {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--navy-900);
+      background: #ffffff;
+      border-color: #9eafbd;
+      text-align: center;
+    }
+
+    .file-action:hover {
+      background: #f0f4f7;
+    }
+
+    .file-action input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .scanner-help {
+      margin: 11px 0 0;
+      font-size: 11px;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+
+    .scan-result {
+      margin-top: 12px;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #f6f8fa;
+      font-size: 12px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+
+    .scan-result.success {
+      color: var(--success);
+      background: var(--success-bg);
+      border-color: #b9dfcc;
+    }
+
+    .scan-result.error {
+      color: var(--danger);
+      background: var(--danger-bg);
+      border-color: #e8bcbc;
+    }
+
+    /* =========================================================
        RESPONSIVE
        ========================================================= */
 
@@ -574,6 +781,12 @@
         position: sticky;
         top: 18px;
         align-self: start;
+      }
+    }
+
+    @media (max-width: 1000px) {
+      .actions {
+        grid-template-columns: 1fr 1fr;
       }
     }
 
@@ -610,16 +823,15 @@
         padding: 16px;
       }
 
-      .form-grid {
+      .form-grid,
+      .guidance-grid,
+      .actions,
+      .scanner-actions {
         grid-template-columns: 1fr;
       }
 
       .field.full {
         grid-column: auto;
-      }
-
-      .actions {
-        grid-template-columns: 1fr;
       }
 
       .section-heading {
@@ -632,6 +844,10 @@
 
       .qr-card {
         padding: 18px 14px;
+      }
+
+      .qr-frame {
+        padding: 8px;
       }
     }
 
@@ -666,7 +882,8 @@
 
       .hero,
       .settings-panel,
-      .preview-panel > .section-heading {
+      .preview-panel > .section-heading,
+      .modal-backdrop {
         display: none !important;
       }
 
@@ -705,7 +922,7 @@
         page-break-inside: avoid;
       }
 
-      .qr-wrap {
+      .qr-frame {
         padding: 4mm;
         border: 0.5mm solid #9daab4;
         border-radius: 2mm;
@@ -727,11 +944,12 @@
     <header class="hero">
       <div class="hero-inner">
         <p class="hero-kicker">PKD Bachok Digital Utility</p>
+
         <h1>Standard Customisable QR Code Generator</h1>
+
         <p>
-          Generate clean, reliable QR codes for official links, registration forms,
-          Google Sites and digital resources. High-resolution PNG export and
-          professional colour options are applied consistently.
+          Create reliable QR codes, check them before use, and download a suitable
+          file for documents, posters or professional printing.
         </p>
       </div>
     </header>
@@ -741,28 +959,43 @@
         <div class="section-heading">
           <div class="section-title-wrap">
             <h2 class="section-title" id="settingsTitle">QR Configuration</h2>
+
             <p class="section-description">
-              Enter the destination and configure the presentation settings.
+              Enter the destination and choose the required output.
             </p>
           </div>
+
           <span class="status-tag">Official Use</span>
         </div>
 
         <div class="form-grid">
           <div class="field full">
-            <label class="field-label" for="qrText">Link / Text to Encode</label>
+            <label class="field-label" for="qrText">
+              Link / Text to Encode
+            </label>
+
             <textarea
               id="qrText"
-              placeholder="Paste a complete URL or enter text"
+              placeholder="Paste a link or enter text"
               spellcheck="false"
             ></textarea>
+
             <p class="control-note">
-              The QR code is regenerated automatically when the destination changes.
+              A missing <strong>https://</strong> will be added automatically
+              when the entry is a website address.
             </p>
+
+            <div
+              class="inline-status"
+              id="destinationStatus"
+              role="status"
+              aria-live="polite"
+            ></div>
           </div>
 
           <div class="field">
             <label class="field-label" for="deptName">Heading</label>
+
             <input
               id="deptName"
               type="text"
@@ -773,6 +1006,7 @@
 
           <div class="field">
             <label class="field-label" for="labelText">Subheading</label>
+
             <input
               id="labelText"
               type="text"
@@ -783,44 +1017,53 @@
 
           <div class="field">
             <label class="field-label" for="size">Preview Size</label>
+
             <select id="size">
               <option value="220">220 px</option>
               <option value="280" selected>280 px</option>
               <option value="340">340 px</option>
               <option value="1000">1000 px</option>
             </select>
+
             <p class="control-note">
-              <strong>PNG export:</strong> always generated at high resolution.
+              This changes the screen preview only.
             </p>
           </div>
 
           <div class="field">
-            <label class="field-label" for="errorLevel">Error Correction</label>
+            <label class="field-label" for="errorLevel">
+              Error Correction
+            </label>
+
             <select id="errorLevel">
               <option value="L">Low</option>
               <option value="M" selected>Medium</option>
               <option value="Q">Quartile</option>
               <option value="H">High</option>
             </select>
+
             <p class="control-note" id="errorLevelNote">
-              Higher correction improves resilience but creates a denser QR.
+              High is used automatically when a logo is included.
             </p>
           </div>
 
           <div class="field">
             <label class="field-label" for="qrColor">QR Colour</label>
+
             <select id="qrColor">
               <option value="#000000">Standard Black</option>
               <option value="#0D2D49" selected>Professional Navy</option>
               <option value="#123B5E">Institutional Blue</option>
             </select>
+
             <p class="control-note">
-              Dark colours on a white background provide the best scan reliability.
+              Dark colours provide the clearest scan.
             </p>
           </div>
 
           <div class="field">
             <label class="field-label" for="logoMode">Logo Option</label>
+
             <select id="logoMode">
               <option value="standard" selected>PKD Bachok Logo</option>
               <option value="none">No Logo</option>
@@ -829,36 +1072,98 @@
           </div>
 
           <div class="field" id="logoSizeField">
-            <label class="field-label" for="logoSize">Centre Logo Size</label>
+            <label class="field-label" for="logoSize">
+              Centre Logo Size
+            </label>
+
             <select id="logoSize">
               <option value="12" selected>Small — Recommended</option>
               <option value="15">Large</option>
             </select>
+
+            <p class="control-note" id="logoSizeNote">
+              Small is recommended for easier scanning.
+            </p>
           </div>
 
           <div class="field full" id="logoUploadField" hidden>
             <label class="field-label" for="logoFile">Upload Logo</label>
-            <input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp" />
+
+            <input
+              id="logoFile"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+            />
+
             <p class="control-note">
-              Use a clear PNG with a transparent or white background.
+              Use a clear PNG, JPEG or WEBP file up to 5 MB.
             </p>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="exportMode">
+              Download Type
+            </label>
+
+            <select id="exportMode">
+              <option value="qr" selected>QR Code Only</option>
+              <option value="poster">QR Poster</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="exportFormat">
+              File Format
+            </label>
+
+            <select id="exportFormat">
+              <option value="png-standard" selected>
+                PNG — High Quality
+              </option>
+              <option value="png-large">
+                PNG — Large Print
+              </option>
+              <option value="svg">
+                SVG — Professional Print
+              </option>
+            </select>
           </div>
         </div>
 
         <div class="option-row">
           <label class="checkbox-label" for="toggleUrlText">
             <input type="checkbox" id="toggleUrlText" />
-            Show URL below the QR code
+            Show the link below the QR code
           </label>
+        </div>
+
+        <div class="guidance-grid">
+          <div class="guidance-card">
+            <span class="guidance-label">Scan Quality</span>
+            <span class="guidance-value" id="scanQualityValue">
+              Enter a link
+            </span>
+          </div>
+
+          <div class="guidance-card">
+            <span class="guidance-label">Recommended Print Size</span>
+            <span class="guidance-value" id="printGuideValue">
+              —
+            </span>
+          </div>
         </div>
 
         <div class="actions">
           <button class="btn-primary" type="button" id="downloadButton">
-            Download High-Resolution PNG
+            Download File
+          </button>
+
+          <button class="btn-outline" type="button" id="testScanButton">
+            Test Scan
           </button>
 
           <button class="btn-outline" type="button" id="printButton">
-            Print QR Poster
+            Print Poster
           </button>
 
           <button class="btn-muted" type="button" id="resetButton">
@@ -866,12 +1171,17 @@
           </button>
         </div>
 
-        <div class="warning" id="warnBox" role="status" aria-live="polite"></div>
+        <div
+          class="warning"
+          id="warnBox"
+          role="status"
+          aria-live="polite"
+        ></div>
 
         <div class="notice">
           <strong>Information security:</strong>
-          Do not encode patient names, identity-card numbers, telephone numbers,
-          diagnoses or other confidential information directly into the QR code.
+          Do not place patient names, identity-card numbers, telephone numbers,
+          diagnoses or other confidential information directly inside the QR code.
         </div>
       </section>
 
@@ -879,29 +1189,32 @@
         <div class="section-heading">
           <div class="section-title-wrap">
             <h2 class="section-title" id="previewTitle">Live Preview</h2>
+
             <p class="section-description">
-              Verify the content and scan the code before distribution.
+              Check the details and test the QR before sharing it.
             </p>
           </div>
+
           <span class="status-tag">Preview</span>
         </div>
 
         <div class="preview-box">
           <article class="qr-card" id="captureArea">
-            <div class="brand-mark" id="brandMark" aria-hidden="true">
-              <img id="brandMarkImg" alt="" />
-            </div>
-
             <div class="dept" id="previewDept"></div>
             <div class="caption" id="previewCaption"></div>
 
             <div class="qr-stage">
-              <div class="qr-wrap">
-                <div id="qrcode" aria-label="Generated QR code"></div>
+              <div class="empty-preview" id="emptyPreview">
+                Paste a link or enter text to generate a QR code.
+              </div>
 
-                <div class="center-logo" id="centerLogoBox">
-                  <img id="centerLogoImg" alt="Centre logo" />
-                </div>
+              <div class="qr-frame" id="qrFrame" hidden>
+                <canvas
+                  id="qrcodeCanvas"
+                  width="280"
+                  height="280"
+                  aria-label="Generated QR code"
+                ></canvas>
               </div>
             </div>
 
@@ -916,6 +1229,66 @@
     </div>
   </main>
 
+  <!-- Scanner -->
+  <div
+    class="modal-backdrop"
+    id="scannerModal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="scannerTitle"
+    hidden
+  >
+    <div class="scanner-dialog">
+      <div class="dialog-header">
+        <div>
+          <h2 class="dialog-title" id="scannerTitle">Test QR Scan</h2>
+
+          <p class="dialog-subtitle">
+            Scan the QR using a camera or choose a saved QR image.
+          </p>
+        </div>
+
+        <button
+          class="close-button"
+          type="button"
+          id="closeScannerButton"
+          aria-label="Close scanner"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="dialog-body">
+        <div id="qrReader"></div>
+
+        <div class="scanner-actions">
+          <button class="btn-primary" type="button" id="startCameraButton">
+            Start Camera
+          </button>
+
+          <label class="file-action" for="scanImageFile">
+            Choose QR Image
+            <input
+              id="scanImageFile"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+            />
+          </label>
+        </div>
+
+        <p class="scanner-help">
+          Allow camera access when requested. When this tool is inside Google
+          Sites and the camera does not open, use the QR image option or open
+          the tool directly in a new tab.
+        </p>
+
+        <div class="scan-result" id="scanResult">
+          Ready to test.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     "use strict";
 
@@ -924,23 +1297,58 @@
 
     const el = (id) => document.getElementById(id);
 
-    let qrInstance = null;
     let logoDataUrl = null;
+    let previewRenderToken = 0;
     let refreshTimer = null;
+
+    let html5Scanner = null;
+    let scannerRunning = false;
+
+    const imageCache = new Map();
+
+    /* ---------------------------------------------------------
+       BASIC HELPERS
+       --------------------------------------------------------- */
 
     function sanitizeText(value) {
       return String(value || "").trim();
     }
 
-    function getErrorLevel(level) {
-      const levels = {
-        L: QRCode.CorrectLevel.L,
-        M: QRCode.CorrectLevel.M,
-        Q: QRCode.CorrectLevel.Q,
-        H: QRCode.CorrectLevel.H
-      };
+    function getByteLength(value) {
+      try {
+        return new TextEncoder().encode(value).length;
+      } catch (error) {
+        return value.length;
+      }
+    }
 
-      return levels[level] || QRCode.CorrectLevel.M;
+    function escapeXml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+    }
+
+    function safeFileName(value) {
+      return sanitizeText(value)
+        .replace(/[^a-z0-9]+/gi, "_")
+        .replace(/^_+|_+$/g, "");
+    }
+
+    function getTimestamp() {
+      const now = new Date();
+
+      return (
+        now.getFullYear() +
+        String(now.getMonth() + 1).padStart(2, "0") +
+        String(now.getDate()).padStart(2, "0") +
+        "_" +
+        String(now.getHours()).padStart(2, "0") +
+        String(now.getMinutes()).padStart(2, "0") +
+        String(now.getSeconds()).padStart(2, "0")
+      );
     }
 
     function getActiveLogo() {
@@ -961,6 +1369,12 @@
       return null;
     }
 
+    function getCorrectionLevel() {
+      return getActiveLogo()
+        ? "H"
+        : el("errorLevel").value;
+    }
+
     function showWarning(message) {
       const box = el("warnBox");
 
@@ -974,151 +1388,303 @@
       box.style.display = "block";
     }
 
-    function updatePreviewText() {
-      const heading = sanitizeText(el("deptName").value);
-      const subheading = sanitizeText(el("labelText").value);
-      const target = sanitizeText(el("qrText").value);
+    function showDestinationStatus(message, type) {
+      const box = el("destinationStatus");
 
-      el("previewDept").textContent = heading;
-      el("previewCaption").textContent = subheading;
-      el("previewTarget").textContent = target;
+      box.className = "inline-status";
+      box.textContent = "";
 
-      updateUrlVisibility();
+      if (!message) {
+        return;
+      }
+
+      box.textContent = message;
+      box.classList.add(type === "bad" ? "bad" : "good");
     }
 
-    function updateUrlVisibility() {
-      const shouldShow = el("toggleUrlText").checked;
-      const hasTarget = Boolean(sanitizeText(el("qrText").value));
+    /* ---------------------------------------------------------
+       LINK CHECKING AND NORMALISATION
+       --------------------------------------------------------- */
 
-      el("previewTarget").style.display =
-        shouldShow && hasTarget ? "block" : "none";
+    function processContent(rawValue) {
+      const original = sanitizeText(rawValue);
+
+      if (!original) {
+        return {
+          ok: false,
+          empty: true,
+          value: "",
+          kind: "empty",
+          changed: false,
+          message: ""
+        };
+      }
+
+      const blockedProtocol =
+        /^(javascript|data|file|vbscript):/i;
+
+      if (blockedProtocol.test(original)) {
+        return {
+          ok: false,
+          empty: false,
+          value: "",
+          kind: "invalid",
+          changed: false,
+          message: "This type of link is not allowed."
+        };
+      }
+
+      let candidate = original.replace(/\r?\n/g, "");
+
+      const startsWithKnownProtocol =
+        /^(https?:|mailto:|tel:|sms:)/i.test(candidate);
+
+      const looksLikeWebsite =
+        /^(?:www\.)?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?::\d+)?(?:[/?#].*)?$/i
+          .test(candidate);
+
+      if (!startsWithKnownProtocol && looksLikeWebsite) {
+        candidate = "https://" + candidate;
+      }
+
+      if (/^https?:\/\//i.test(candidate)) {
+        try {
+          const url = new URL(candidate);
+
+          if (!url.hostname) {
+            throw new Error("Missing hostname");
+          }
+
+          return {
+            ok: true,
+            empty: false,
+            value: url.href,
+            kind: "url",
+            changed: url.href !== original,
+            message:
+              url.protocol === "https:"
+                ? "Website link is ready."
+                : "The link is ready. HTTPS is preferred when available."
+          };
+
+        } catch (error) {
+          return {
+            ok: false,
+            empty: false,
+            value: "",
+            kind: "invalid",
+            changed: false,
+            message: "This website address is not valid."
+          };
+        }
+      }
+
+      if (/^(mailto:|tel:|sms:)/i.test(candidate)) {
+        const parts = candidate.split(":");
+
+        if (!sanitizeText(parts.slice(1).join(":"))) {
+          return {
+            ok: false,
+            empty: false,
+            value: "",
+            kind: "invalid",
+            changed: false,
+            message: "This entry is incomplete."
+          };
+        }
+
+        return {
+          ok: true,
+          empty: false,
+          value: candidate,
+          kind: "action",
+          changed: candidate !== original,
+          message: "The entry is ready."
+        };
+      }
+
+      if (/^[a-z][a-z0-9+.-]*:\/\//i.test(candidate)) {
+        return {
+          ok: false,
+          empty: false,
+          value: "",
+          kind: "invalid",
+          changed: false,
+          message: "This type of link is not supported."
+        };
+      }
+
+      return {
+        ok: true,
+        empty: false,
+        value: candidate,
+        kind: "text",
+        changed: candidate !== original,
+        message: "Text is ready."
+      };
     }
 
-    function syncLogoControls() {
+    function applyNormalisedContent() {
+      const result = processContent(el("qrText").value);
+
+      if (result.ok && result.changed) {
+        el("qrText").value = result.value;
+        updateApplication();
+      }
+    }
+
+    /* ---------------------------------------------------------
+       LOGO RULES AND SIMPLE GUIDANCE
+       --------------------------------------------------------- */
+
+    function syncLogoControls(contentValue) {
       const mode = el("logoMode").value;
-      const activeLogo = getActiveLogo();
-      const hasLogo = Boolean(activeLogo);
+      const logoSize = el("logoSize");
+      const largeOption =
+        logoSize.querySelector('option[value="15"]');
+
+      const contentLength = getByteLength(contentValue || "");
+      const keepLogoSmall = contentLength > 180;
 
       el("logoUploadField").hidden = mode !== "custom";
       el("logoSizeField").hidden = mode === "none";
 
-      /*
-       * A centre logo obscures part of the QR.
-       * Enforce High correction whenever an active logo is present.
-       */
+      largeOption.disabled = keepLogoSmall;
+
+      if (keepLogoSmall && logoSize.value === "15") {
+        logoSize.value = "12";
+      }
+
+      if (mode === "none") {
+        el("logoSizeNote").textContent = "";
+      } else if (keepLogoSmall) {
+        el("logoSizeNote").textContent =
+          "The logo is kept small because the link is long.";
+      } else {
+        el("logoSizeNote").textContent =
+          "Small is recommended for easier scanning.";
+      }
+
+      const hasLogo = Boolean(getActiveLogo());
+
       if (hasLogo) {
         el("errorLevel").value = "H";
         el("errorLevel").disabled = true;
         el("errorLevelNote").textContent =
-          "High correction is enforced automatically while a centre logo is used.";
+          "High is used automatically while a logo is included.";
       } else {
         el("errorLevel").disabled = false;
         el("errorLevelNote").textContent =
-          "Higher correction improves resilience but creates a denser QR.";
+          "Choose High when the QR may be printed small.";
       }
     }
 
-    function updateLogoPreview() {
-      const centerBox = el("centerLogoBox");
-      const centerImage = el("centerLogoImg");
-      const qrSize = parseInt(el("size").value, 10) || 280;
-      const logoPercent = parseInt(el("logoSize").value, 10) || 12;
-      const activeLogo = getActiveLogo();
+    function updateGuidance(contentValue) {
+      const quality = el("scanQualityValue");
+      const printGuide = el("printGuideValue");
 
-      const qrExists = Boolean(
-        el("qrcode").querySelector("canvas") ||
-        el("qrcode").querySelector("img")
-      );
+      quality.className = "guidance-value";
 
-      if (!activeLogo || !qrExists) {
-        centerBox.style.display = "none";
-        centerImage.removeAttribute("src");
+      if (!contentValue) {
+        quality.textContent = "Enter a link";
+        printGuide.textContent = "—";
         return;
       }
 
-      const imageArea = Math.round(qrSize * logoPercent / 100);
-      const padding = Math.max(6, Math.round(imageArea * 0.18));
-      const outerSize = imageArea + padding * 2;
+      const length = getByteLength(contentValue);
+      const logoSize =
+        getActiveLogo()
+          ? parseInt(el("logoSize").value, 10) || 12
+          : 0;
 
-      centerBox.style.width = outerSize + "px";
-      centerBox.style.height = outerSize + "px";
-      centerBox.style.padding = padding + "px";
-      centerBox.style.display = "flex";
-      centerImage.src = activeLogo;
+      let level = 0;
+
+      if (length > 100) level += 1;
+      if (length > 180) level += 1;
+      if (length > 300) level += 1;
+      if (logoSize >= 15) level += 1;
+
+      level = Math.min(level, 3);
+
+      if (level === 0) {
+        quality.textContent = "Very Good";
+        quality.classList.add("quality-good");
+        printGuide.textContent = "At least 30 mm";
+      } else if (level === 1) {
+        quality.textContent = "Good";
+        quality.classList.add("quality-good");
+        printGuide.textContent = "At least 35 mm";
+      } else if (level === 2) {
+        quality.textContent = "Test Before Use";
+        quality.classList.add("quality-caution");
+        printGuide.textContent = "At least 45 mm";
+      } else {
+        quality.textContent = "Shorter Link Recommended";
+        quality.classList.add("quality-poor");
+        printGuide.textContent = "At least 55 mm";
+      }
     }
 
-    function validateDestination(text) {
-      if (!text) {
-        return "";
+    function getLongContentMessage(contentValue) {
+      const length = getByteLength(contentValue);
+
+      if (length > 300) {
+        return "This link is very long. A shorter published link is recommended.";
       }
 
-      if (text.length > 500) {
-        return "The encoded content is very long. Use a shorter URL for a cleaner and more reliable QR code.";
-      }
-
-      if (text.length > 120) {
-        return "This is a long destination. Test the QR with more than one phone before distribution.";
+      if (length > 180) {
+        return "This link is long. Test the QR before sharing it.";
       }
 
       return "";
     }
 
-    function generateQR() {
-      updatePreviewText();
-      syncLogoControls();
+    /* ---------------------------------------------------------
+       QR MODEL AND DRAWING
+       --------------------------------------------------------- */
 
-      const text = sanitizeText(el("qrText").value);
-      const holder = el("qrcode");
-
-      holder.innerHTML = "";
-      qrInstance = null;
-      showWarning("");
-
-      if (!text) {
-        updateLogoPreview();
-        return;
-      }
-
-      const size = parseInt(el("size").value, 10) || 280;
-      const activeLogo = getActiveLogo();
-
-      const correction = activeLogo
-        ? QRCode.CorrectLevel.H
-        : getErrorLevel(el("errorLevel").value);
-
-      qrInstance = new QRCode(holder, {
-        text: text,
-        width: size,
-        height: size,
-        colorDark: el("qrColor").value,
-        colorLight: "#ffffff",
-        correctLevel: correction
-      });
-
-      updateLogoPreview();
-
-      const warning = validateDestination(text);
-
-      if (warning) {
-        showWarning(warning);
+    function prepareQrLibrary() {
+      if (
+        window.qrcode &&
+        qrcode.stringToBytesFuncs &&
+        qrcode.stringToBytesFuncs["UTF-8"]
+      ) {
+        qrcode.stringToBytes =
+          qrcode.stringToBytesFuncs["UTF-8"];
       }
     }
 
-    function scheduleQRRefresh() {
-      clearTimeout(refreshTimer);
+    function createQrModel(contentValue, correctionLevel) {
+      if (typeof window.qrcode !== "function") {
+        throw new Error("QR generator library did not load.");
+      }
 
-      refreshTimer = setTimeout(() => {
-        generateQR();
-      }, 180);
+      const model = qrcode(0, correctionLevel);
+      model.addData(contentValue, "Byte");
+      model.make();
+
+      return model;
     }
 
-    function drawRoundRect(ctx, x, y, width, height, radius) {
+    function drawRoundRect(
+      ctx,
+      x,
+      y,
+      width,
+      height,
+      radius
+    ) {
       const r = Math.min(radius, width / 2, height / 2);
 
       ctx.beginPath();
       ctx.moveTo(x + r, y);
       ctx.lineTo(x + width - r, y);
-      ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+      ctx.quadraticCurveTo(
+        x + width,
+        y,
+        x + width,
+        y + r
+      );
       ctx.lineTo(x + width, y + height - r);
       ctx.quadraticCurveTo(
         x + width,
@@ -1127,14 +1693,97 @@
         y + height
       );
       ctx.lineTo(x + r, y + height);
-      ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+      ctx.quadraticCurveTo(
+        x,
+        y + height,
+        x,
+        y + height - r
+      );
       ctx.lineTo(x, y + r);
       ctx.quadraticCurveTo(x, y, x + r, y);
       ctx.closePath();
     }
 
-    function loadImageForExport(src) {
-      return new Promise((resolve, reject) => {
+    function drawQrMatrixOnCanvas(
+      canvas,
+      model,
+      darkColour,
+      canvasSize,
+      quietModules = 4
+    ) {
+      canvas.width = canvasSize;
+      canvas.height = canvasSize;
+
+      const ctx = canvas.getContext("2d", {
+        alpha: false
+      });
+
+      if (!ctx) {
+        throw new Error("Canvas is not supported.");
+      }
+
+      const count = model.getModuleCount();
+      const totalModules = count + quietModules * 2;
+
+      const moduleSize = Math.max(
+        1,
+        Math.floor(canvasSize / totalModules)
+      );
+
+      const fullQrSize = moduleSize * totalModules;
+      const offset = Math.floor(
+        (canvasSize - fullQrSize) / 2
+      );
+
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvasSize, canvasSize);
+
+      ctx.fillStyle = darkColour;
+
+      for (let row = 0; row < count; row += 1) {
+        for (let column = 0; column < count; column += 1) {
+          if (!model.isDark(row, column)) {
+            continue;
+          }
+
+          const x =
+            offset +
+            (column + quietModules) * moduleSize;
+
+          const y =
+            offset +
+            (row + quietModules) * moduleSize;
+
+          ctx.fillRect(
+            x,
+            y,
+            moduleSize,
+            moduleSize
+          );
+        }
+      }
+
+      return {
+        ctx,
+        canvasSize,
+        moduleSize,
+        count,
+        quietModules,
+        offset,
+        qrStart:
+          offset + quietModules * moduleSize,
+        qrPixelSize:
+          count * moduleSize
+      };
+    }
+
+    function loadImage(src) {
+      if (imageCache.has(src)) {
+        return imageCache.get(src);
+      }
+
+      const promise = new Promise((resolve, reject) => {
         const image = new Image();
 
         if (!src.startsWith("data:")) {
@@ -1142,265 +1791,1399 @@
         }
 
         image.onload = () => resolve(image);
+
         image.onerror = () =>
           reject(new Error("The logo image could not be loaded."));
 
         image.src = src;
       });
+
+      imageCache.set(src, promise);
+      return promise;
     }
 
-    function waitForQRCode(holder, timeoutMs = 5000) {
+    function drawLogoOnCanvas(
+      metrics,
+      logo,
+      logoPercent
+    ) {
+      const {
+        ctx,
+        canvasSize,
+        qrPixelSize
+      } = metrics;
+
+      const logoArea =
+        Math.round(qrPixelSize * logoPercent / 100);
+
+      const padding =
+        Math.max(6, Math.round(logoArea * 0.18));
+
+      const backgroundSize =
+        logoArea + padding * 2;
+
+      const backgroundX =
+        (canvasSize - backgroundSize) / 2;
+
+      const backgroundY =
+        (canvasSize - backgroundSize) / 2;
+
+      const cornerRadius =
+        Math.max(8, Math.round(backgroundSize * 0.08));
+
+      ctx.fillStyle = "#ffffff";
+
+      drawRoundRect(
+        ctx,
+        backgroundX,
+        backgroundY,
+        backgroundSize,
+        backgroundSize,
+        cornerRadius
+      );
+
+      ctx.fill();
+
+      const originalWidth =
+        logo.naturalWidth || logo.width;
+
+      const originalHeight =
+        logo.naturalHeight || logo.height;
+
+      const scale = Math.min(
+        logoArea / originalWidth,
+        logoArea / originalHeight
+      );
+
+      const drawWidth =
+        Math.round(originalWidth * scale);
+
+      const drawHeight =
+        Math.round(originalHeight * scale);
+
+      const logoX =
+        (canvasSize - drawWidth) / 2;
+
+      const logoY =
+        (canvasSize - drawHeight) / 2;
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      ctx.drawImage(
+        logo,
+        logoX,
+        logoY,
+        drawWidth,
+        drawHeight
+      );
+    }
+
+    async function renderQrCanvas(
+      canvas,
+      model,
+      size,
+      colour,
+      activeLogo,
+      logoPercent
+    ) {
+      const metrics = drawQrMatrixOnCanvas(
+        canvas,
+        model,
+        colour,
+        size,
+        4
+      );
+
+      if (activeLogo) {
+        const logo = await loadImage(activeLogo);
+
+        drawLogoOnCanvas(
+          metrics,
+          logo,
+          logoPercent
+        );
+      }
+
+      return metrics;
+    }
+
+    /* ---------------------------------------------------------
+       PREVIEW
+       --------------------------------------------------------- */
+
+    function updatePreviewText(contentValue) {
+      el("previewDept").textContent =
+        sanitizeText(el("deptName").value);
+
+      el("previewCaption").textContent =
+        sanitizeText(el("labelText").value);
+
+      el("previewTarget").textContent =
+        contentValue || "";
+
+      updateUrlVisibility(contentValue);
+    }
+
+    function updateUrlVisibility(contentValue) {
+      const showUrl = el("toggleUrlText").checked;
+
+      el("previewTarget").style.display =
+        showUrl && contentValue
+          ? "block"
+          : "none";
+    }
+
+    async function renderPreview(contentResult) {
+      const currentToken = ++previewRenderToken;
+
+      const canvas = el("qrcodeCanvas");
+      const emptyPreview = el("emptyPreview");
+      const qrFrame = el("qrFrame");
+
+      if (!contentResult.ok) {
+        emptyPreview.hidden = false;
+        qrFrame.hidden = true;
+        return;
+      }
+
+      const size =
+        parseInt(el("size").value, 10) || 280;
+
+      try {
+        const model = createQrModel(
+          contentResult.value,
+          getCorrectionLevel()
+        );
+
+        const activeLogo = getActiveLogo();
+        const logoPercent =
+          parseInt(el("logoSize").value, 10) || 12;
+
+        await renderQrCanvas(
+          canvas,
+          model,
+          size,
+          el("qrColor").value,
+          activeLogo,
+          logoPercent
+        );
+
+        if (currentToken !== previewRenderToken) {
+          return;
+        }
+
+        emptyPreview.hidden = true;
+        qrFrame.hidden = false;
+
+      } catch (error) {
+        console.error("QR preview failed:", error);
+
+        emptyPreview.textContent =
+          "The QR code could not be generated. Try a shorter link.";
+
+        emptyPreview.hidden = false;
+        qrFrame.hidden = true;
+
+        showWarning(
+          "The entry is too long for this QR code. Use a shorter link."
+        );
+      }
+    }
+
+    function updateApplication() {
+      const contentResult =
+        processContent(el("qrText").value);
+
+      const contentValue =
+        contentResult.ok
+          ? contentResult.value
+          : "";
+
+      syncLogoControls(contentValue);
+      updatePreviewText(contentValue);
+      updateGuidance(contentValue);
+
+      if (contentResult.empty) {
+        showDestinationStatus("", "");
+        showWarning("");
+      } else if (!contentResult.ok) {
+        showDestinationStatus(
+          contentResult.message,
+          "bad"
+        );
+
+        showWarning(contentResult.message);
+      } else {
+        showDestinationStatus(
+          contentResult.message,
+          "good"
+        );
+
+        showWarning(
+          getLongContentMessage(contentValue)
+        );
+      }
+
+      renderPreview(contentResult);
+    }
+
+    function scheduleApplicationUpdate() {
+      clearTimeout(refreshTimer);
+
+      refreshTimer = setTimeout(() => {
+        updateApplication();
+      }, 180);
+    }
+
+    /* ---------------------------------------------------------
+       EXPORT HELPERS
+       --------------------------------------------------------- */
+
+    function downloadBlob(blob, fileName) {
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = objectUrl;
+      link.download = fileName;
+      link.style.display = "none";
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => {
+        URL.revokeObjectURL(objectUrl);
+      }, 2000);
+    }
+
+    function canvasToBlob(canvas) {
       return new Promise((resolve, reject) => {
-        const startedAt = Date.now();
-
-        const check = () => {
-          const source =
-            holder.querySelector("canvas") ||
-            holder.querySelector("img");
-
-          if (source) {
-            resolve(source);
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(
+              new Error("The image file could not be created.")
+            );
             return;
           }
 
-          if (Date.now() - startedAt > timeoutMs) {
-            reject(new Error("The QR image was not generated in time."));
-            return;
-          }
-
-          requestAnimationFrame(check);
-        };
-
-        check();
+          resolve(blob);
+        }, "image/png");
       });
     }
 
-    async function downloadQR() {
-      const text = sanitizeText(el("qrText").value);
+    function wrapCanvasText(
+      ctx,
+      text,
+      maxWidth,
+      maxLines
+    ) {
+      const clean = sanitizeText(text);
 
-      if (!text) {
-        alert("Sila masukkan pautan atau teks terlebih dahulu.");
+      if (!clean) {
+        return [];
+      }
+
+      const words = clean.split(/\s+/);
+      const lines = [];
+      let currentLine = "";
+
+      for (const word of words) {
+        const testLine =
+          currentLine
+            ? currentLine + " " + word
+            : word;
+
+        if (
+          ctx.measureText(testLine).width <= maxWidth ||
+          !currentLine
+        ) {
+          currentLine = testLine;
+        } else {
+          lines.push(currentLine);
+          currentLine = word;
+
+          if (lines.length === maxLines - 1) {
+            break;
+          }
+        }
+      }
+
+      if (
+        currentLine &&
+        lines.length < maxLines
+      ) {
+        lines.push(currentLine);
+      }
+
+      const usedWords =
+        lines.join(" ").split(/\s+/).length;
+
+      if (
+        usedWords < words.length &&
+        lines.length
+      ) {
+        let lastLine =
+          lines[lines.length - 1];
+
+        while (
+          ctx.measureText(lastLine + "…").width > maxWidth &&
+          lastLine.length > 1
+        ) {
+          lastLine =
+            lastLine.slice(0, -1);
+        }
+
+        lines[lines.length - 1] =
+          lastLine.trimEnd() + "…";
+      }
+
+      return lines;
+    }
+
+    function drawCenteredLines(
+      ctx,
+      lines,
+      centerX,
+      startY,
+      lineHeight
+    ) {
+      lines.forEach((line, index) => {
+        ctx.fillText(
+          line,
+          centerX,
+          startY + index * lineHeight
+        );
+      });
+
+      return startY + lines.length * lineHeight;
+    }
+
+    async function createQrOnlyPng(
+      model,
+      size,
+      activeLogo,
+      logoPercent
+    ) {
+      const canvas = document.createElement("canvas");
+
+      await renderQrCanvas(
+        canvas,
+        model,
+        size,
+        el("qrColor").value,
+        activeLogo,
+        logoPercent
+      );
+
+      return canvas;
+    }
+
+    async function createPosterPng(
+      model,
+      large,
+      activeLogo,
+      logoPercent,
+      contentValue
+    ) {
+      const width = large ? 3508 : 2480;
+      const height = large ? 4961 : 3508;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d", {
+        alpha: false
+      });
+
+      if (!ctx) {
+        throw new Error("Canvas is not supported.");
+      }
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+
+      const margin =
+        Math.round(width * 0.085);
+
+      const cardX = margin;
+      const cardY = margin;
+      const cardWidth = width - margin * 2;
+      const cardHeight = height - margin * 2;
+
+      ctx.strokeStyle = "#aebbc7";
+      ctx.lineWidth =
+        Math.max(3, Math.round(width * 0.0015));
+
+      drawRoundRect(
+        ctx,
+        cardX,
+        cardY,
+        cardWidth,
+        cardHeight,
+        Math.round(width * 0.015)
+      );
+
+      ctx.stroke();
+
+      const centerX = width / 2;
+      let y = cardY + Math.round(height * 0.08);
+
+      const heading =
+        sanitizeText(el("deptName").value);
+
+      const subheading =
+        sanitizeText(el("labelText").value);
+
+      if (heading) {
+        ctx.fillStyle = "#0a2238";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.font =
+          `800 ${Math.round(width * 0.033)}px Inter, Arial`;
+
+        const headingLines = wrapCanvasText(
+          ctx,
+          heading,
+          cardWidth * 0.78,
+          2
+        );
+
+        y = drawCenteredLines(
+          ctx,
+          headingLines,
+          centerX,
+          y,
+          Math.round(width * 0.043)
+        );
+
+        y += Math.round(height * 0.008);
+      }
+
+      if (subheading) {
+        ctx.fillStyle = "#5f7181";
+        ctx.font =
+          `500 ${Math.round(width * 0.018)}px Inter, Arial`;
+
+        const subheadingLines = wrapCanvasText(
+          ctx,
+          subheading,
+          cardWidth * 0.78,
+          3
+        );
+
+        y = drawCenteredLines(
+          ctx,
+          subheadingLines,
+          centerX,
+          y,
+          Math.round(width * 0.027)
+        );
+
+        y += Math.round(height * 0.016);
+      }
+
+      const qrSize =
+        Math.min(
+          Math.round(width * 0.69),
+          Math.round(height * 0.49)
+        );
+
+      const qrCanvas =
+        await createQrOnlyPng(
+          model,
+          qrSize,
+          activeLogo,
+          logoPercent
+        );
+
+      const qrX =
+        Math.round((width - qrSize) / 2);
+
+      ctx.drawImage(
+        qrCanvas,
+        qrX,
+        y,
+        qrSize,
+        qrSize
+      );
+
+      y += qrSize + Math.round(height * 0.025);
+
+      if (el("toggleUrlText").checked) {
+        ctx.fillStyle = "#5f7181";
+        ctx.font =
+          `500 ${Math.round(width * 0.012)}px Inter, Arial`;
+
+        const urlLines = wrapCanvasText(
+          ctx,
+          contentValue,
+          cardWidth * 0.78,
+          3
+        );
+
+        y = drawCenteredLines(
+          ctx,
+          urlLines,
+          centerX,
+          y,
+          Math.round(width * 0.019)
+        );
+
+        y += Math.round(height * 0.012);
+      }
+
+      ctx.fillStyle = "#42586a";
+      ctx.font =
+        `600 ${Math.round(width * 0.015)}px Inter, Arial`;
+
+      ctx.fillText(
+        "Sila imbas menggunakan kamera telefon atau pengimbas QR.",
+        centerX,
+        y
+      );
+
+      return canvas;
+    }
+
+    async function imageToDataUrl(src) {
+      if (!src) {
+        return null;
+      }
+
+      if (src.startsWith("data:")) {
+        return src;
+      }
+
+      const image = await loadImage(src);
+      const canvas = document.createElement("canvas");
+
+      canvas.width =
+        image.naturalWidth || image.width;
+
+      canvas.height =
+        image.naturalHeight || image.height;
+
+      const ctx = canvas.getContext("2d");
+
+      ctx.drawImage(image, 0, 0);
+
+      return canvas.toDataURL("image/png");
+    }
+
+    function buildQrSvgGroup(
+      model,
+      x,
+      y,
+      size,
+      colour,
+      logoData,
+      logoPercent
+    ) {
+      const quietModules = 4;
+      const count = model.getModuleCount();
+      const totalModules =
+        count + quietModules * 2;
+
+      const moduleSize =
+        size / totalModules;
+
+      const qrStartX =
+        x + quietModules * moduleSize;
+
+      const qrStartY =
+        y + quietModules * moduleSize;
+
+      const qrPixelSize =
+        count * moduleSize;
+
+      let path = "";
+
+      for (let row = 0; row < count; row += 1) {
+        for (
+          let column = 0;
+          column < count;
+          column += 1
+        ) {
+          if (!model.isDark(row, column)) {
+            continue;
+          }
+
+          const cellX =
+            qrStartX + column * moduleSize;
+
+          const cellY =
+            qrStartY + row * moduleSize;
+
+          path +=
+            `M${cellX.toFixed(3)} ${cellY.toFixed(3)}` +
+            `h${moduleSize.toFixed(3)}` +
+            `v${moduleSize.toFixed(3)}` +
+            `h-${moduleSize.toFixed(3)}z`;
+        }
+      }
+
+      let svg =
+        `<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="#ffffff"/>` +
+        `<path d="${path}" fill="${escapeXml(colour)}"/>`;
+
+      if (logoData) {
+        const logoArea =
+          qrPixelSize * logoPercent / 100;
+
+        const padding =
+          Math.max(
+            moduleSize * 2,
+            logoArea * 0.18
+          );
+
+        const backgroundSize =
+          logoArea + padding * 2;
+
+        const backgroundX =
+          x + (size - backgroundSize) / 2;
+
+        const backgroundY =
+          y + (size - backgroundSize) / 2;
+
+        const cornerRadius =
+          backgroundSize * 0.08;
+
+        const logoX =
+          x + (size - logoArea) / 2;
+
+        const logoY =
+          y + (size - logoArea) / 2;
+
+        svg +=
+          `<rect x="${backgroundX}" y="${backgroundY}" ` +
+          `width="${backgroundSize}" height="${backgroundSize}" ` +
+          `rx="${cornerRadius}" fill="#ffffff"/>` +
+          `<image href="${escapeXml(logoData)}" ` +
+          `x="${logoX}" y="${logoY}" ` +
+          `width="${logoArea}" height="${logoArea}" ` +
+          `preserveAspectRatio="xMidYMid meet"/>`;
+      }
+
+      return svg;
+    }
+
+    function wrapTextByCharacters(
+      text,
+      maxCharacters,
+      maxLines
+    ) {
+      const clean = sanitizeText(text);
+
+      if (!clean) {
+        return [];
+      }
+
+      const words = clean.split(/\s+/);
+      const lines = [];
+      let current = "";
+
+      for (const word of words) {
+        const next =
+          current
+            ? current + " " + word
+            : word;
+
+        if (
+          next.length <= maxCharacters ||
+          !current
+        ) {
+          current = next;
+        } else {
+          lines.push(current);
+          current = word;
+
+          if (lines.length === maxLines - 1) {
+            break;
+          }
+        }
+      }
+
+      if (
+        current &&
+        lines.length < maxLines
+      ) {
+        lines.push(current);
+      }
+
+      const used =
+        lines.join(" ").split(/\s+/).length;
+
+      if (
+        used < words.length &&
+        lines.length
+      ) {
+        const lastIndex =
+          lines.length - 1;
+
+        lines[lastIndex] =
+          lines[lastIndex].slice(
+            0,
+            Math.max(
+              1,
+              maxCharacters - 1
+            )
+          ) + "…";
+      }
+
+      return lines;
+    }
+
+    function svgTextBlock(
+      lines,
+      x,
+      y,
+      fontSize,
+      lineHeight,
+      weight,
+      colour
+    ) {
+      if (!lines.length) {
+        return {
+          svg: "",
+          endY: y
+        };
+      }
+
+      const tspans = lines
+        .map((line, index) => {
+          const dy =
+            index === 0
+              ? 0
+              : lineHeight;
+
+          return (
+            `<tspan x="${x}" dy="${dy}">` +
+            `${escapeXml(line)}</tspan>`
+          );
+        })
+        .join("");
+
+      return {
+        svg:
+          `<text x="${x}" y="${y}" ` +
+          `text-anchor="middle" ` +
+          `font-family="Arial, sans-serif" ` +
+          `font-size="${fontSize}" ` +
+          `font-weight="${weight}" ` +
+          `fill="${colour}">${tspans}</text>`,
+        endY:
+          y +
+          Math.max(
+            fontSize,
+            lines.length * lineHeight
+          )
+      };
+    }
+
+    async function createSvgFile(
+      model,
+      mode,
+      activeLogo,
+      logoPercent,
+      contentValue
+    ) {
+      const logoData =
+        activeLogo
+          ? await imageToDataUrl(activeLogo)
+          : null;
+
+      if (mode === "qr") {
+        const size = 1200;
+
+        const body = buildQrSvgGroup(
+          model,
+          0,
+          0,
+          size,
+          el("qrColor").value,
+          logoData,
+          logoPercent
+        );
+
+        return (
+          `<?xml version="1.0" encoding="UTF-8"?>` +
+          `<svg xmlns="http://www.w3.org/2000/svg" ` +
+          `xmlns:xlink="http://www.w3.org/1999/xlink" ` +
+          `width="${size}" height="${size}" ` +
+          `viewBox="0 0 ${size} ${size}">` +
+          body +
+          `</svg>`
+        );
+      }
+
+      const width = 2480;
+      const height = 3508;
+      const margin = 210;
+      const cardWidth = width - margin * 2;
+      const cardHeight = height - margin * 2;
+      const centerX = width / 2;
+
+      let y = margin + 300;
+      let body =
+        `<rect width="${width}" height="${height}" fill="#ffffff"/>` +
+        `<rect x="${margin}" y="${margin}" ` +
+        `width="${cardWidth}" height="${cardHeight}" ` +
+        `rx="36" fill="#ffffff" stroke="#aebbc7" stroke-width="4"/>`;
+
+      const headingLines =
+        wrapTextByCharacters(
+          el("deptName").value,
+          34,
+          2
+        );
+
+      const headingBlock =
+        svgTextBlock(
+          headingLines,
+          centerX,
+          y,
+          86,
+          104,
+          800,
+          "#0a2238"
+        );
+
+      body += headingBlock.svg;
+      y = headingBlock.endY + 30;
+
+      const subheadingLines =
+        wrapTextByCharacters(
+          el("labelText").value,
+          55,
+          3
+        );
+
+      const subheadingBlock =
+        svgTextBlock(
+          subheadingLines,
+          centerX,
+          y,
+          46,
+          62,
+          500,
+          "#5f7181"
+        );
+
+      body += subheadingBlock.svg;
+      y = subheadingBlock.endY + 75;
+
+      const qrSize = 1720;
+      const qrX =
+        (width - qrSize) / 2;
+
+      body += buildQrSvgGroup(
+        model,
+        qrX,
+        y,
+        qrSize,
+        el("qrColor").value,
+        logoData,
+        logoPercent
+      );
+
+      y += qrSize + 85;
+
+      if (el("toggleUrlText").checked) {
+        const urlLines =
+          wrapTextByCharacters(
+            contentValue,
+            85,
+            3
+          );
+
+        const urlBlock =
+          svgTextBlock(
+            urlLines,
+            centerX,
+            y,
+            30,
+            43,
+            500,
+            "#5f7181"
+          );
+
+        body += urlBlock.svg;
+        y = urlBlock.endY + 45;
+      }
+
+      body +=
+        `<text x="${centerX}" y="${y}" ` +
+        `text-anchor="middle" ` +
+        `font-family="Arial, sans-serif" ` +
+        `font-size="36" font-weight="600" ` +
+        `fill="#42586a">` +
+        `Sila imbas menggunakan kamera telefon atau pengimbas QR.` +
+        `</text>`;
+
+      return (
+        `<?xml version="1.0" encoding="UTF-8"?>` +
+        `<svg xmlns="http://www.w3.org/2000/svg" ` +
+        `xmlns:xlink="http://www.w3.org/1999/xlink" ` +
+        `width="${width}" height="${height}" ` +
+        `viewBox="0 0 ${width} ${height}">` +
+        body +
+        `</svg>`
+      );
+    }
+
+    async function downloadFile() {
+      const contentResult =
+        processContent(el("qrText").value);
+
+      if (!contentResult.ok) {
+        alert(
+          contentResult.empty
+            ? "Sila masukkan pautan atau teks terlebih dahulu."
+            : contentResult.message
+        );
+
         el("qrText").focus();
         return;
       }
 
-      const downloadButton = el("downloadButton");
-      const originalButtonText = downloadButton.textContent;
+      const button = el("downloadButton");
+      const originalText = button.textContent;
 
-      downloadButton.disabled = true;
-      downloadButton.textContent = "Generating PNG...";
-
-      const safeHeading = sanitizeText(el("deptName").value)
-        .replace(/[^a-z0-9]+/gi, "_")
-        .replace(/^_+|_+$/g, "");
-
-      const now = new Date();
-
-      const timestamp =
-        now.getFullYear() +
-        String(now.getMonth() + 1).padStart(2, "0") +
-        String(now.getDate()).padStart(2, "0") +
-        "_" +
-        String(now.getHours()).padStart(2, "0") +
-        String(now.getMinutes()).padStart(2, "0") +
-        String(now.getSeconds()).padStart(2, "0");
-
-      const fileName =
-        (safeHeading || "pkd_bachok_qr_code") +
-        "_" +
-        timestamp +
-        ".png";
-
-      /*
-       * High-resolution export:
-       * QR area: 2000 × 2000 px
-       * Quiet zone: 160 px on every side
-       * Final PNG: 2320 × 2320 px
-       */
-      const qrExportSize = 2000;
-      const quietZone = 160;
-      const finalSize = qrExportSize + quietZone * 2;
-
-      const activeLogo = getActiveLogo();
-      const logoPercent = parseInt(el("logoSize").value, 10) || 12;
-
-      const correction = activeLogo
-        ? QRCode.CorrectLevel.H
-        : getErrorLevel(el("errorLevel").value);
-
-      let temporaryHolder = null;
+      button.disabled = true;
+      button.textContent = "Preparing File...";
 
       try {
-        temporaryHolder = document.createElement("div");
-        temporaryHolder.setAttribute("aria-hidden", "true");
-        temporaryHolder.style.position = "fixed";
-        temporaryHolder.style.left = "-10000px";
-        temporaryHolder.style.top = "-10000px";
-        temporaryHolder.style.width = qrExportSize + "px";
-        temporaryHolder.style.height = qrExportSize + "px";
-        temporaryHolder.style.opacity = "0";
-        temporaryHolder.style.pointerEvents = "none";
-
-        document.body.appendChild(temporaryHolder);
-
-        new QRCode(temporaryHolder, {
-          text: text,
-          width: qrExportSize,
-          height: qrExportSize,
-          colorDark: el("qrColor").value,
-          colorLight: "#ffffff",
-          correctLevel: correction
-        });
-
-        const qrSource = await waitForQRCode(temporaryHolder);
-
-        const exportCanvas = document.createElement("canvas");
-        exportCanvas.width = finalSize;
-        exportCanvas.height = finalSize;
-
-        const ctx = exportCanvas.getContext("2d", {
-          alpha: false
-        });
-
-        if (!ctx) {
-          throw new Error("Canvas export is not supported by this browser.");
-        }
-
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, finalSize, finalSize);
-
-        /*
-         * Keep the QR modules crisp.
-         */
-        ctx.imageSmoothingEnabled = false;
-
-        ctx.drawImage(
-          qrSource,
-          quietZone,
-          quietZone,
-          qrExportSize,
-          qrExportSize
+        const model = createQrModel(
+          contentResult.value,
+          getCorrectionLevel()
         );
 
-        if (activeLogo && logoPercent > 0) {
-          const logo = await loadImageForExport(activeLogo);
+        const activeLogo = getActiveLogo();
+        const logoPercent =
+          parseInt(el("logoSize").value, 10) || 12;
 
-          const logoArea =
-            Math.round(qrExportSize * logoPercent / 100);
+        const exportMode =
+          el("exportMode").value;
 
-          const padding =
-            Math.max(28, Math.round(logoArea * 0.18));
+        const exportFormat =
+          el("exportFormat").value;
 
-          const backgroundSize =
-            logoArea + padding * 2;
+        const baseName =
+          safeFileName(el("deptName").value) ||
+          "pkd_bachok_qr";
 
-          const backgroundX =
-            quietZone + (qrExportSize - backgroundSize) / 2;
+        const fileBase =
+          baseName + "_" + getTimestamp();
 
-          const backgroundY =
-            quietZone + (qrExportSize - backgroundSize) / 2;
-
-          const cornerRadius =
-            Math.max(28, Math.round(backgroundSize * 0.08));
-
-          ctx.fillStyle = "#ffffff";
-
-          drawRoundRect(
-            ctx,
-            backgroundX,
-            backgroundY,
-            backgroundSize,
-            backgroundSize,
-            cornerRadius
+        if (exportFormat === "svg") {
+          const svg = await createSvgFile(
+            model,
+            exportMode,
+            activeLogo,
+            logoPercent,
+            contentResult.value
           );
 
-          ctx.fill();
-
-          const originalWidth =
-            logo.naturalWidth || logo.width;
-
-          const originalHeight =
-            logo.naturalHeight || logo.height;
-
-          if (!originalWidth || !originalHeight) {
-            throw new Error("The selected logo has invalid dimensions.");
-          }
-
-          const scale = Math.min(
-            logoArea / originalWidth,
-            logoArea / originalHeight
+          const blob = new Blob(
+            [svg],
+            {
+              type: "image/svg+xml;charset=utf-8"
+            }
           );
 
-          const drawWidth =
-            Math.round(originalWidth * scale);
+          downloadBlob(
+            blob,
+            fileBase + ".svg"
+          );
 
-          const drawHeight =
-            Math.round(originalHeight * scale);
+          return;
+        }
 
-          const logoX =
-            quietZone + (qrExportSize - drawWidth) / 2;
+        const large =
+          exportFormat === "png-large";
 
-          const logoY =
-            quietZone + (qrExportSize - drawHeight) / 2;
+        let canvas;
 
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = "high";
-
-          ctx.drawImage(
-            logo,
-            logoX,
-            logoY,
-            drawWidth,
-            drawHeight
+        if (exportMode === "poster") {
+          canvas = await createPosterPng(
+            model,
+            large,
+            activeLogo,
+            logoPercent,
+            contentResult.value
+          );
+        } else {
+          canvas = await createQrOnlyPng(
+            model,
+            large ? 4000 : 2320,
+            activeLogo,
+            logoPercent
           );
         }
 
-        const pngBlob = await new Promise((resolve) => {
-          exportCanvas.toBlob(resolve, "image/png");
-        });
+        const blob = await canvasToBlob(canvas);
 
-        if (!pngBlob) {
-          throw new Error("The PNG file could not be created.");
-        }
-
-        const objectUrl = URL.createObjectURL(pngBlob);
-        const link = document.createElement("a");
-
-        link.href = objectUrl;
-        link.download = fileName;
-        link.style.display = "none";
-
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-
-        setTimeout(() => {
-          URL.revokeObjectURL(objectUrl);
-        }, 2000);
+        downloadBlob(
+          blob,
+          fileBase + ".png"
+        );
 
       } catch (error) {
-        console.error("High-resolution PNG export failed:", error);
+        console.error("Download failed:", error);
 
         alert(
-          "PNG beresolusi tinggi tidak dapat dijana. " +
-          "Sila semak imej logo dan cuba semula."
+          "The file could not be prepared. " +
+          "Try a shorter link or check the selected logo."
         );
 
       } finally {
-        if (temporaryHolder && temporaryHolder.parentNode) {
-          temporaryHolder.parentNode.removeChild(temporaryHolder);
-        }
-
-        downloadButton.disabled = false;
-        downloadButton.textContent = originalButtonText;
+        button.disabled = false;
+        button.textContent = originalText;
       }
     }
 
-    function printPoster() {
-      const text = sanitizeText(el("qrText").value);
+    /* ---------------------------------------------------------
+       TEST SCANNER
+       --------------------------------------------------------- */
 
-      if (!text) {
-        alert("Sila masukkan pautan atau teks terlebih dahulu.");
+    function setScanResult(message, type) {
+      const box = el("scanResult");
+
+      box.className = "scan-result";
+      box.textContent = message;
+
+      if (type === "success") {
+        box.classList.add("success");
+      }
+
+      if (type === "error") {
+        box.classList.add("error");
+      }
+    }
+
+    function getComparisonValue(value) {
+      const result = processContent(value);
+
+      return result.ok
+        ? result.value
+        : sanitizeText(value);
+    }
+
+    async function handleScannedValue(decodedText) {
+      const expectedResult =
+        processContent(el("qrText").value);
+
+      if (!expectedResult.ok) {
+        setScanResult(
+          "The entered destination is not ready.",
+          "error"
+        );
+        return;
+      }
+
+      await destroyScanner();
+
+      const expected =
+        getComparisonValue(expectedResult.value);
+
+      const scanned =
+        getComparisonValue(decodedText);
+
+      if (expected === scanned) {
+        setScanResult(
+          "Match confirmed. The QR code is correct.",
+          "success"
+        );
+      } else {
+        setScanResult(
+          "The scanned QR does not match the entered destination. " +
+          "Scanned result: " +
+          decodedText,
+          "error"
+        );
+      }
+    }
+
+    async function startCameraScanner() {
+      const contentResult =
+        processContent(el("qrText").value);
+
+      if (!contentResult.ok) {
+        setScanResult(
+          "Enter a valid link or text before testing.",
+          "error"
+        );
+        return;
+      }
+
+      if (typeof window.Html5Qrcode !== "function") {
+        setScanResult(
+          "The scanner could not load. Refresh the page and try again.",
+          "error"
+        );
+        return;
+      }
+
+      if (
+        !window.isSecureContext ||
+        !navigator.mediaDevices
+      ) {
+        setScanResult(
+          "The camera is not available here. " +
+          "Open the tool directly in a new tab or choose a QR image.",
+          "error"
+        );
+        return;
+      }
+
+      try {
+        await destroyScanner();
+
+        html5Scanner = new Html5Qrcode(
+          "qrReader",
+          {
+            formatsToSupport: [
+              Html5QrcodeSupportedFormats.QR_CODE
+            ],
+            verbose: false
+          }
+        );
+
+        el("startCameraButton").disabled = true;
+        el("startCameraButton").textContent =
+          "Camera Starting...";
+
+        await html5Scanner.start(
+          {
+            facingMode: "environment"
+          },
+          {
+            fps: 10,
+            qrbox: function (
+              viewfinderWidth,
+              viewfinderHeight
+            ) {
+              const size = Math.floor(
+                Math.min(
+                  viewfinderWidth,
+                  viewfinderHeight
+                ) * 0.72
+              );
+
+              return {
+                width: size,
+                height: size
+              };
+            },
+            aspectRatio: 1
+          },
+          function (decodedText) {
+            handleScannedValue(decodedText);
+          },
+          function () {
+            // No message is needed while the camera is searching.
+          }
+        );
+
+        scannerRunning = true;
+
+        el("startCameraButton").disabled = false;
+        el("startCameraButton").textContent =
+          "Stop Camera";
+
+        setScanResult(
+          "Camera is ready. Point it at the QR code.",
+          ""
+        );
+
+      } catch (error) {
+        console.error("Camera scanner failed:", error);
+
+        scannerRunning = false;
+
+        el("startCameraButton").disabled = false;
+        el("startCameraButton").textContent =
+          "Start Camera";
+
+        setScanResult(
+          "The camera could not open. " +
+          "Allow camera access, open the tool in a new tab, " +
+          "or choose a QR image.",
+          "error"
+        );
+      }
+    }
+
+    async function toggleCameraScanner() {
+      if (scannerRunning) {
+        await destroyScanner();
+
+        setScanResult(
+          "Camera stopped.",
+          ""
+        );
+
+        return;
+      }
+
+      await startCameraScanner();
+    }
+
+    async function scanImageFile(file) {
+      if (!file) {
+        return;
+      }
+
+      const contentResult =
+        processContent(el("qrText").value);
+
+      if (!contentResult.ok) {
+        setScanResult(
+          "Enter a valid link or text before testing.",
+          "error"
+        );
+        return;
+      }
+
+      if (typeof window.Html5Qrcode !== "function") {
+        setScanResult(
+          "The scanner could not load. Refresh the page and try again.",
+          "error"
+        );
+        return;
+      }
+
+      try {
+        await destroyScanner();
+
+        html5Scanner = new Html5Qrcode(
+          "qrReader",
+          {
+            formatsToSupport: [
+              Html5QrcodeSupportedFormats.QR_CODE
+            ],
+            verbose: false
+          }
+        );
+
+        setScanResult(
+          "Checking the QR image...",
+          ""
+        );
+
+        const decodedText =
+          await html5Scanner.scanFile(
+            file,
+            true
+          );
+
+        await handleScannedValue(decodedText);
+
+      } catch (error) {
+        console.error("QR image scan failed:", error);
+
+        await destroyScanner();
+
+        setScanResult(
+          "The QR could not be read from this image. " +
+          "Use a clearer image and try again.",
+          "error"
+        );
+      }
+    }
+
+    async function destroyScanner() {
+      if (!html5Scanner) {
+        scannerRunning = false;
+
+        el("startCameraButton").disabled = false;
+        el("startCameraButton").textContent =
+          "Start Camera";
+
+        el("qrReader").innerHTML = "";
+        return;
+      }
+
+      try {
+        if (scannerRunning) {
+          await html5Scanner.stop();
+        }
+      } catch (error) {
+        console.warn("Scanner stop warning:", error);
+      }
+
+      try {
+        html5Scanner.clear();
+      } catch (error) {
+        console.warn("Scanner clear warning:", error);
+      }
+
+      html5Scanner = null;
+      scannerRunning = false;
+
+      el("startCameraButton").disabled = false;
+      el("startCameraButton").textContent =
+        "Start Camera";
+
+      el("qrReader").innerHTML = "";
+    }
+
+    function openScannerModal() {
+      const contentResult =
+        processContent(el("qrText").value);
+
+      if (!contentResult.ok) {
+        alert(
+          contentResult.empty
+            ? "Sila masukkan pautan atau teks terlebih dahulu."
+            : contentResult.message
+        );
+
+        el("qrText").focus();
+        return;
+      }
+
+      el("scannerModal").hidden = false;
+      document.body.classList.add("modal-open");
+
+      setScanResult(
+        "Ready to test.",
+        ""
+      );
+
+      el("startCameraButton").focus();
+    }
+
+    async function closeScannerModal() {
+      await destroyScanner();
+
+      el("scanImageFile").value = "";
+      el("scannerModal").hidden = true;
+
+      document.body.classList.remove(
+        "modal-open"
+      );
+
+      el("testScanButton").focus();
+    }
+
+    /* ---------------------------------------------------------
+       PRINT, RESET AND EVENTS
+       --------------------------------------------------------- */
+
+    function printPoster() {
+      const contentResult =
+        processContent(el("qrText").value);
+
+      if (!contentResult.ok) {
+        alert(
+          contentResult.empty
+            ? "Sila masukkan pautan atau teks terlebih dahulu."
+            : contentResult.message
+        );
+
         el("qrText").focus();
         return;
       }
@@ -1420,21 +3203,20 @@
       el("logoMode").value = "standard";
       el("logoSize").value = "12";
       el("logoFile").value = "";
+      el("exportMode").value = "qr";
+      el("exportFormat").value = "png-standard";
       el("toggleUrlText").checked = false;
 
       logoDataUrl = null;
-      qrInstance = null;
+      imageCache.clear();
 
-      el("qrcode").innerHTML = "";
-      el("previewDept").textContent = "";
-      el("previewCaption").textContent = "";
-      el("previewTarget").textContent = "";
+      el("emptyPreview").textContent =
+        "Paste a link or enter text to generate a QR code.";
 
       showWarning("");
-      syncLogoControls();
-      updateLogoPreview();
-      updateUrlVisibility();
+      showDestinationStatus("", "");
 
+      updateApplication();
       el("qrText").focus();
     }
 
@@ -1443,8 +3225,8 @@
 
       if (!file) {
         logoDataUrl = null;
-        syncLogoControls();
-        generateQR();
+        imageCache.clear();
+        updateApplication();
         return;
       }
 
@@ -1458,69 +3240,112 @@
         event.target.value = "";
         logoDataUrl = null;
 
-        alert("Sila pilih fail PNG, JPEG atau WEBP.");
-        syncLogoControls();
-        generateQR();
+        alert(
+          "Please select a PNG, JPEG or WEBP image."
+        );
+
+        updateApplication();
         return;
       }
 
-      const maxSizeBytes = 5 * 1024 * 1024;
+      const maximumSize =
+        5 * 1024 * 1024;
 
-      if (file.size > maxSizeBytes) {
+      if (file.size > maximumSize) {
         event.target.value = "";
         logoDataUrl = null;
 
-        alert("Saiz fail logo mestilah 5 MB atau lebih kecil.");
-        syncLogoControls();
-        generateQR();
+        alert(
+          "The logo file must be 5 MB or smaller."
+        );
+
+        updateApplication();
         return;
       }
 
       const reader = new FileReader();
 
-      reader.onload = function (loadEvent) {
-        logoDataUrl = loadEvent.target.result;
-        el("logoMode").value = "custom";
-        syncLogoControls();
-        generateQR();
+      reader.onload = function (
+        loadEvent
+      ) {
+        logoDataUrl =
+          loadEvent.target.result;
+
+        imageCache.clear();
+
+        el("logoMode").value =
+          "custom";
+
+        updateApplication();
       };
 
       reader.onerror = function () {
         logoDataUrl = null;
-        alert("Logo tidak dapat dibaca. Sila cuba fail lain.");
-        syncLogoControls();
-        generateQR();
+
+        alert(
+          "The logo could not be read. Try another file."
+        );
+
+        updateApplication();
       };
 
       reader.readAsDataURL(file);
     }
 
     function bindEvents() {
-      el("qrText").addEventListener("input", scheduleQRRefresh);
-      el("deptName").addEventListener("input", updatePreviewText);
-      el("labelText").addEventListener("input", updatePreviewText);
+      el("qrText").addEventListener(
+        "input",
+        scheduleApplicationUpdate
+      );
 
-      el("size").addEventListener("change", generateQR);
+      el("qrText").addEventListener(
+        "blur",
+        applyNormalisedContent
+      );
 
-      el("errorLevel").addEventListener("change", generateQR);
-      el("qrColor").addEventListener("change", generateQR);
+      el("deptName").addEventListener(
+        "input",
+        updateApplication
+      );
 
-      el("logoMode").addEventListener("change", () => {
-        syncLogoControls();
-        generateQR();
+      el("labelText").addEventListener(
+        "input",
+        updateApplication
+      );
+
+      [
+        "size",
+        "errorLevel",
+        "qrColor",
+        "logoMode",
+        "logoSize",
+        "exportMode",
+        "exportFormat"
+      ].forEach((id) => {
+        el(id).addEventListener(
+          "change",
+          updateApplication
+        );
       });
 
-      el("logoSize").addEventListener("change", generateQR);
-      el("logoFile").addEventListener("change", handleLogoFile);
+      el("logoFile").addEventListener(
+        "change",
+        handleLogoFile
+      );
 
       el("toggleUrlText").addEventListener(
         "change",
-        updateUrlVisibility
+        updateApplication
       );
 
       el("downloadButton").addEventListener(
         "click",
-        downloadQR
+        downloadFile
+      );
+
+      el("testScanButton").addEventListener(
+        "click",
+        openScannerModal
       );
 
       el("printButton").addEventListener(
@@ -1532,16 +3357,69 @@
         "click",
         resetForm
       );
+
+      el("startCameraButton").addEventListener(
+        "click",
+        toggleCameraScanner
+      );
+
+      el("scanImageFile").addEventListener(
+        "change",
+        function (event) {
+          scanImageFile(
+            event.target.files[0]
+          );
+        }
+      );
+
+      el("closeScannerButton").addEventListener(
+        "click",
+        closeScannerModal
+      );
+
+      el("scannerModal").addEventListener(
+        "click",
+        function (event) {
+          if (event.target === el("scannerModal")) {
+            closeScannerModal();
+          }
+        }
+      );
+
+      document.addEventListener(
+        "keydown",
+        function (event) {
+          if (
+            event.key === "Escape" &&
+            !el("scannerModal").hidden
+          ) {
+            closeScannerModal();
+          }
+        }
+      );
+
+      window.addEventListener(
+        "beforeunload",
+        function () {
+          if (scannerRunning && html5Scanner) {
+            html5Scanner.stop().catch(
+              function () {}
+            );
+          }
+        }
+      );
     }
 
     function initialise() {
+      prepareQrLibrary();
       bindEvents();
-      syncLogoControls();
-      updatePreviewText();
-      generateQR();
+      updateApplication();
     }
 
-    window.addEventListener("DOMContentLoaded", initialise);
+    window.addEventListener(
+      "DOMContentLoaded",
+      initialise
+    );
   </script>
 </body>
 </html>
