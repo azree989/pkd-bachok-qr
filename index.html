@@ -138,7 +138,25 @@
       font-weight: 700;
       color: var(--text);
     }
+input[type="file"] {
+  padding: 7px;
+  background: #fff;
+}
 
+input[type="file"]::file-selector-button {
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 12px;
+  margin-right: 10px;
+  background: var(--soft);
+  color: var(--accent-dark);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background: #dfedf9;
+}
     input, select, textarea {
       width: 100%;
       border: 1px solid #cfd9e3;
@@ -168,11 +186,24 @@
     }
 
     .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 16px;
-    }
+  display: grid;
+  grid-template-columns: 1.25fr 1.25fr 0.7fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.actions button {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  line-height: 1.25;
+}
+
+@media (max-width: 620px) {
+  .actions {
+    grid-template-columns: 1fr;
+  }
+}
 
     button {
       border: none;
@@ -256,11 +287,11 @@
 }
     .preview-box {
       width: 100%;
-      min-height: 500px;
+      min-height: 470px;
       border: 1px dashed #c7d5e2;
       border-radius: 20px;
       background: #fbfdff;
-      padding: 18px;
+      padding: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -371,11 +402,13 @@
     }
 
     .target {
-      margin-top: 10px;
-      font-size: 12px;
-      color: #4b6075;
-      word-break: break-word;
-    }
+  max-width: 92%;
+  margin: 8px auto 0;
+  font-size: 10px;
+  line-height: 1.35;
+  color: #64788b;
+  overflow-wrap: anywhere;
+}
 
     .hint {
       margin-top: 8px;
@@ -398,9 +431,18 @@
       }
 
       .preview-box {
-        min-height: unset;
-      }
-    }
+    min-height: unset;
+  }
+}
+
+/* Keep Preview visible while scrolling on desktop */
+@media (min-width: 901px) {
+  .preview {
+    position: sticky;
+    top: 18px;
+    align-self: start;
+  }
+}
 
     @media print {
   @page {
@@ -544,7 +586,7 @@
   <label for="logoSize">Center Logo Size</label>
   <select id="logoSize">
     <option value="12" selected>Small</option>
-    <option value="15">Big</option>
+<option value="15">Big</option>
   </select>
 </div>
 
@@ -716,8 +758,8 @@ if (!qrExists) {
   centerBox.style.display = "flex";
   centerImg.src = activeLogo;
 
-  brandMark.style.display = "flex";
-  brandMarkImg.src = activeLogo;
+  brandMark.style.display = "none";
+  brandMarkImg.src = "";
 }
     el("logoFile").addEventListener("change", function(evt) {
   const file = evt.target.files[0];
