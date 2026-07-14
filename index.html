@@ -1114,7 +1114,8 @@
             </p>
 
             <p class="control-note mode-note" id="scanModeNote">
-              Leave this box empty to scan and decode an existing QR code.
+              Leave this box empty to scan a QR code. Decoded content remains
+              inside the scanner window and will not replace this box.
             </p>
 
             <div
@@ -1382,7 +1383,7 @@
 
           <p class="dialog-subtitle">
             Use your camera or choose a saved QR image. The decoded content
-            will be placed in the Link / Text box.
+            will appear here without changing the Link / Text box.
           </p>
         </div>
 
@@ -1704,11 +1705,6 @@
 
       if (result.ok && result.changed) {
         el("qrText").value = result.value;
-
-        if (decodedValue && el("qrText").value !== decodedValue) {
-          clearDecodedResult();
-        }
-
         updateApplication();
       }
     }
@@ -3172,7 +3168,7 @@
 
       el("scanModeNote").textContent = hasText
         ? "QR generation mode is active. Clear this box to enable QR decoding."
-        : "Scanner ready: use Scan / Decode QR to read an existing QR code.";
+        : "Scanner ready. Decoded content will stay inside the scanner window.";
 
       const modalOpen = !el("scannerModal").hidden;
 
@@ -3300,13 +3296,9 @@
       await destroyScanner();
 
       /*
-       * Preserve the exact decoded content in the main text box.
-       * updateApplication() then activates the normal QR generator.
+       * Keep decoding separate from QR generation.
+       * The main Link / Text box is intentionally left unchanged.
        */
-      el("qrText").value = value;
-      clearTimeout(refreshTimer);
-      updateApplication();
-
       showDecodedResult(value);
 
       setScanResult(
@@ -3722,13 +3714,7 @@
     function bindEvents() {
       el("qrText").addEventListener(
         "input",
-        function () {
-          if (decodedValue && el("qrText").value !== decodedValue) {
-            clearDecodedResult();
-          }
-
-          scheduleApplicationUpdate();
-        }
+        scheduleApplicationUpdate
       );
 
       el("qrText").addEventListener(
