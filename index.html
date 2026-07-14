@@ -810,6 +810,12 @@
       background: #f0f4f7;
     }
 
+    .file-action.is-disabled {
+      opacity: 0.68;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
     .file-action input {
       position: absolute;
       width: 1px;
@@ -846,6 +852,52 @@
       color: var(--danger);
       background: var(--danger-bg);
       border-color: #e8bcbc;
+    }
+
+    .mode-note {
+      color: var(--blue-700);
+      font-weight: 700;
+    }
+
+    .decoded-output {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid #b9dfcc;
+      border-radius: 7px;
+      background: var(--success-bg);
+    }
+
+    .decoded-label {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.045em;
+      text-transform: uppercase;
+      color: var(--success);
+    }
+
+    .decoded-value {
+      max-height: 160px;
+      overflow: auto;
+      padding: 10px;
+      border: 1px solid #c7ded2;
+      border-radius: 6px;
+      background: #ffffff;
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      user-select: text;
+    }
+
+    .result-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 9px;
+      margin-top: 10px;
     }
 
     /* =========================================================
@@ -1021,11 +1073,11 @@
       <div class="hero-inner">
         <p class="hero-kicker">PKD Bachok Digital Utility</p>
 
-        <h1>Standard Customisable QR Code Generator</h1>
+        <h1>Customisable QR Code Generator &amp; Scanner</h1>
 
         <p>
-          Create reliable QR codes, check them before use, and download a suitable
-          file for documents, posters or professional printing.
+          Generate professional QR codes or decode an existing QR using your
+          phone camera or a saved image.
         </p>
       </div>
     </header>
@@ -1059,6 +1111,10 @@
             <p class="control-note">
               A missing <strong>https://</strong> will be added automatically
               when the entry is a website address.
+            </p>
+
+            <p class="control-note mode-note" id="scanModeNote">
+              Leave this box empty to scan and decode an existing QR code.
             </p>
 
             <div
@@ -1234,8 +1290,13 @@
             Download File
           </button>
 
-          <button class="btn-outline" type="button" id="testScanButton">
-            Test Scan
+          <button
+            class="btn-outline"
+            type="button"
+            id="testScanButton"
+            aria-describedby="scanModeNote"
+          >
+            Scan / Decode QR
           </button>
 
           <button class="btn-outline" type="button" id="printButton">
@@ -1267,7 +1328,7 @@
             <h2 class="section-title" id="previewTitle">Live Preview (Poster)</h2>
 
             <p class="section-description">
-              Check the details and test the QR before sharing it.
+              Enter content to generate a QR, or clear the box to decode one.
             </p>
           </div>
 
@@ -1317,10 +1378,11 @@
     <div class="scanner-dialog">
       <div class="dialog-header">
         <div>
-          <h2 class="dialog-title" id="scannerTitle">Test QR Scan</h2>
+          <h2 class="dialog-title" id="scannerTitle">Scan &amp; Decode QR</h2>
 
           <p class="dialog-subtitle">
-            Scan the QR using a camera or choose a saved QR image.
+            Use your camera or choose a saved QR image. The decoded content
+            will be placed in the Link / Text box.
           </p>
         </div>
 
@@ -1358,8 +1420,43 @@
           the tool directly in a new tab.
         </p>
 
-        <div class="scan-result" id="scanResult">
-          Ready to test.
+        <div
+          class="scan-result"
+          id="scanResult"
+          role="status"
+          aria-live="polite"
+        >
+          Ready to scan.
+        </div>
+
+        <div
+          class="decoded-output"
+          id="decodedOutput"
+          aria-live="polite"
+          hidden
+        >
+          <span class="decoded-label">Decoded Content</span>
+
+          <div class="decoded-value" id="decodedValue"></div>
+
+          <div class="result-actions">
+            <button
+              class="btn-primary"
+              type="button"
+              id="copyDecodedButton"
+            >
+              Copy Result
+            </button>
+
+            <button
+              class="btn-outline"
+              type="button"
+              id="openDecodedLinkButton"
+              hidden
+            >
+              Open Link
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1379,6 +1476,8 @@
 
     let html5Scanner = null;
     let scannerRunning = false;
+    let scanResultHandled = false;
+    let decodedValue = "";
 
     const imageCache = new Map();
 
@@ -1605,6 +1704,11 @@
 
       if (result.ok && result.changed) {
         el("qrText").value = result.value;
+
+        if (decodedValue && el("qrText").value !== decodedValue) {
+          clearDecodedResult();
+        }
+
         updateApplication();
       }
     }
@@ -2079,6 +2183,7 @@
       syncLogoControls(contentValue);
       updatePreviewText(contentValue);
       updateGuidance(contentValue);
+      syncApplicationMode(contentResult);
 
       if (contentResult.empty) {
         showDestinationStatus("", "");
@@ -2986,7 +3091,7 @@
     }
 
     /* ---------------------------------------------------------
-       TEST SCANNER
+       QR SCANNER / DECODER
        --------------------------------------------------------- */
 
     function setScanResult(message, type) {
@@ -3004,21 +3109,189 @@
       }
     }
 
-    function getComparisonValue(value) {
+    function getOpenableWebUrl(value) {
       const result = processContent(value);
 
-      return result.ok
-        ? result.value
-        : sanitizeText(value);
+      if (!result.ok || result.kind !== "url") {
+        return null;
+      }
+
+      try {
+        const url = new URL(result.value);
+
+        if (url.protocol !== "http:" && url.protocol !== "https:") {
+          return null;
+        }
+
+        return url.href;
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function clearDecodedResult() {
+      decodedValue = "";
+
+      el("decodedValue").textContent = "";
+      el("decodedOutput").hidden = true;
+      el("openDecodedLinkButton").hidden = true;
+
+      const copyButton = el("copyDecodedButton");
+      copyButton.disabled = false;
+      copyButton.textContent = "Copy Result";
+    }
+
+    function showDecodedResult(value) {
+      decodedValue = String(value ?? "");
+
+      el("decodedValue").textContent = decodedValue;
+      el("decodedOutput").hidden = false;
+
+      const openableUrl = getOpenableWebUrl(decodedValue);
+      el("openDecodedLinkButton").hidden = !openableUrl;
+    }
+
+    function syncApplicationMode(contentResult) {
+      const result =
+        contentResult || processContent(el("qrText").value);
+
+      const hasText = sanitizeText(el("qrText").value) !== "";
+      const canGenerate = Boolean(result.ok);
+
+      /*
+       * Decode mode is available only when the main text box is empty.
+       * Generation actions are available only when content is valid.
+       */
+      el("testScanButton").disabled = hasText;
+      el("downloadButton").disabled = !canGenerate;
+      el("printButton").disabled = !canGenerate;
+
+      el("testScanButton").title = hasText
+        ? "Clear the Link / Text box before scanning another QR code."
+        : "Scan and decode an existing QR code.";
+
+      el("scanModeNote").textContent = hasText
+        ? "QR generation mode is active. Clear this box to enable QR decoding."
+        : "Scanner ready: use Scan / Decode QR to read an existing QR code.";
+
+      const modalOpen = !el("scannerModal").hidden;
+
+      if (modalOpen) {
+        const blockScanner = hasText && !scannerRunning;
+
+        el("startCameraButton").disabled = blockScanner;
+        el("scanImageFile").disabled = hasText;
+
+        const fileAction = el("scanImageFile").closest(".file-action");
+
+        if (fileAction) {
+          fileAction.classList.toggle("is-disabled", hasText);
+          fileAction.setAttribute(
+            "aria-disabled",
+            hasText ? "true" : "false"
+          );
+        }
+      }
+    }
+
+    async function copyDecodedResult() {
+      const value = decodedValue;
+
+      if (!value) {
+        setScanResult("There is no decoded content to copy.", "error");
+        return;
+      }
+
+      const button = el("copyDecodedButton");
+      const originalText = button.textContent;
+
+      try {
+        if (
+          navigator.clipboard &&
+          window.isSecureContext
+        ) {
+          await navigator.clipboard.writeText(value);
+        } else {
+          const helper = document.createElement("textarea");
+
+          helper.value = value;
+          helper.setAttribute("readonly", "");
+          helper.style.position = "fixed";
+          helper.style.opacity = "0";
+          helper.style.pointerEvents = "none";
+
+          document.body.appendChild(helper);
+          helper.select();
+          helper.setSelectionRange(0, helper.value.length);
+
+          const copied = document.execCommand("copy");
+          helper.remove();
+
+          if (!copied) {
+            throw new Error("Clipboard copy failed.");
+          }
+        }
+
+        button.textContent = "Copied";
+        setScanResult("Decoded content copied.", "success");
+
+      } catch (error) {
+        console.error("Copy failed:", error);
+
+        setScanResult(
+          "The result could not be copied automatically. " +
+          "Select the decoded content and copy it manually.",
+          "error"
+        );
+
+      } finally {
+        setTimeout(() => {
+          button.textContent = originalText;
+        }, 1600);
+      }
+    }
+
+    function openDecodedLink() {
+      const url = getOpenableWebUrl(decodedValue);
+
+      if (!url) {
+        setScanResult(
+          "The decoded content is not a supported web link.",
+          "error"
+        );
+        return;
+      }
+
+      const newWindow = window.open(
+        url,
+        "_blank",
+        "noopener,noreferrer"
+      );
+
+      if (newWindow) {
+        newWindow.opener = null;
+      } else {
+        setScanResult(
+          "The browser blocked the new tab. Allow pop-ups and try again.",
+          "error"
+        );
+      }
     }
 
     async function handleScannedValue(decodedText) {
-      const expectedResult =
-        processContent(el("qrText").value);
+      if (scanResultHandled) {
+        return;
+      }
 
-      if (!expectedResult.ok) {
+      scanResultHandled = true;
+
+      const value = String(decodedText ?? "");
+
+      if (!value) {
+        scanResultHandled = false;
+
         setScanResult(
-          "The entered destination is not ready.",
+          "The QR code did not contain readable content.",
           "error"
         );
         return;
@@ -3026,36 +3299,40 @@
 
       await destroyScanner();
 
-      const expected =
-        getComparisonValue(expectedResult.value);
+      /*
+       * Preserve the exact decoded content in the main text box.
+       * updateApplication() then activates the normal QR generator.
+       */
+      el("qrText").value = value;
+      clearTimeout(refreshTimer);
+      updateApplication();
 
-      const scanned =
-        getComparisonValue(decodedText);
+      showDecodedResult(value);
 
-      if (expected === scanned) {
-        setScanResult(
-          "Match confirmed. The QR code is correct.",
-          "success"
-        );
-      } else {
-        setScanResult(
-          "The scanned QR does not match the entered destination. " +
-          "Scanned result: " +
-          decodedText,
-          "error"
-        );
+      setScanResult(
+        getOpenableWebUrl(value)
+          ? "QR code decoded successfully. You can copy or open the link."
+          : "QR code decoded successfully. You can copy the result.",
+        "success"
+      );
+    }
+
+    function scannerRequiresEmptyBox() {
+      if (sanitizeText(el("qrText").value) === "") {
+        return false;
       }
+
+      setScanResult(
+        "Clear the Link / Text box before scanning another QR code.",
+        "error"
+      );
+
+      syncApplicationMode();
+      return true;
     }
 
     async function startCameraScanner() {
-      const contentResult =
-        processContent(el("qrText").value);
-
-      if (!contentResult.ok) {
-        setScanResult(
-          "Enter a valid link or text before testing.",
-          "error"
-        );
+      if (scannerRequiresEmptyBox()) {
         return;
       }
 
@@ -3080,6 +3357,8 @@
       }
 
       try {
+        scanResultHandled = false;
+        clearDecodedResult();
         await destroyScanner();
 
         html5Scanner = new Html5Qrcode(
@@ -3135,7 +3414,7 @@
           "Stop Camera";
 
         setScanResult(
-          "Camera is ready. Point it at the QR code.",
+          "Camera is ready. Point it at a QR code.",
           ""
         );
 
@@ -3143,6 +3422,7 @@
         console.error("Camera scanner failed:", error);
 
         scannerRunning = false;
+        scanResultHandled = false;
 
         el("startCameraButton").disabled = false;
         el("startCameraButton").textContent =
@@ -3154,15 +3434,18 @@
           "or choose a QR image.",
           "error"
         );
+
+        syncApplicationMode();
       }
     }
 
     async function toggleCameraScanner() {
       if (scannerRunning) {
         await destroyScanner();
+        scanResultHandled = false;
 
         setScanResult(
-          "Camera stopped.",
+          "Camera stopped. You can restart it or choose a QR image.",
           ""
         );
 
@@ -3177,14 +3460,8 @@
         return;
       }
 
-      const contentResult =
-        processContent(el("qrText").value);
-
-      if (!contentResult.ok) {
-        setScanResult(
-          "Enter a valid link or text before testing.",
-          "error"
-        );
+      if (scannerRequiresEmptyBox()) {
+        el("scanImageFile").value = "";
         return;
       }
 
@@ -3193,10 +3470,13 @@
           "The scanner could not load. Refresh the page and try again.",
           "error"
         );
+        el("scanImageFile").value = "";
         return;
       }
 
       try {
+        scanResultHandled = false;
+        clearDecodedResult();
         await destroyScanner();
 
         html5Scanner = new Html5Qrcode(
@@ -3225,6 +3505,7 @@
       } catch (error) {
         console.error("QR image scan failed:", error);
 
+        scanResultHandled = false;
         await destroyScanner();
 
         setScanResult(
@@ -3232,6 +3513,9 @@
           "Use a clearer image and try again.",
           "error"
         );
+
+      } finally {
+        el("scanImageFile").value = "";
       }
     }
 
@@ -3239,11 +3523,11 @@
       if (!html5Scanner) {
         scannerRunning = false;
 
-        el("startCameraButton").disabled = false;
         el("startCameraButton").textContent =
           "Start Camera";
 
         el("qrReader").innerHTML = "";
+        syncApplicationMode();
         return;
       }
 
@@ -3264,36 +3548,35 @@
       html5Scanner = null;
       scannerRunning = false;
 
-      el("startCameraButton").disabled = false;
       el("startCameraButton").textContent =
         "Start Camera";
 
       el("qrReader").innerHTML = "";
+      syncApplicationMode();
     }
 
     function openScannerModal() {
-      const contentResult =
-        processContent(el("qrText").value);
-
-      if (!contentResult.ok) {
+      if (sanitizeText(el("qrText").value) !== "") {
         alert(
-          contentResult.empty
-            ? "Sila masukkan pautan atau teks terlebih dahulu."
-            : contentResult.message
+          "Clear the Link / Text box before scanning another QR code."
         );
 
         el("qrText").focus();
         return;
       }
 
+      scanResultHandled = false;
+      clearDecodedResult();
+
       el("scannerModal").hidden = false;
       document.body.classList.add("modal-open");
 
       setScanResult(
-        "Ready to test.",
+        "Ready to scan. Start the camera or choose a QR image.",
         ""
       );
 
+      syncApplicationMode();
       el("startCameraButton").focus();
     }
 
@@ -3307,6 +3590,7 @@
         "modal-open"
       );
 
+      syncApplicationMode();
       el("testScanButton").focus();
     }
 
@@ -3350,6 +3634,8 @@
 
       logoDataUrl = null;
       imageCache.clear();
+      scanResultHandled = false;
+      clearDecodedResult();
 
       el("emptyPreview").textContent =
         "Paste a link or enter text to generate a QR code.";
@@ -3436,7 +3722,13 @@
     function bindEvents() {
       el("qrText").addEventListener(
         "input",
-        scheduleApplicationUpdate
+        function () {
+          if (decodedValue && el("qrText").value !== decodedValue) {
+            clearDecodedResult();
+          }
+
+          scheduleApplicationUpdate();
+        }
       );
 
       el("qrText").addEventListener(
@@ -3511,6 +3803,16 @@
             event.target.files[0]
           );
         }
+      );
+
+      el("copyDecodedButton").addEventListener(
+        "click",
+        copyDecodedResult
+      );
+
+      el("openDecodedLinkButton").addEventListener(
+        "click",
+        openDecodedLink
       );
 
       el("closeScannerButton").addEventListener(
