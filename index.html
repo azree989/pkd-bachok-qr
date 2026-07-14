@@ -3247,32 +3247,40 @@
       }
     }
 
-    function openDecodedLink() {
-      const url = getOpenableWebUrl(decodedValue);
+  function openDecodedLink() {
+  const url = getOpenableWebUrl(decodedValue);
 
-      if (!url) {
-        setScanResult(
-          "The decoded content is not a supported web link.",
-          "error"
-        );
-        return;
-      }
+  if (!url) {
+    setScanResult(
+      "The decoded content is not a supported web link.",
+      "error"
+    );
+    return;
+  }
 
-      const newWindow = window.open(
-        url,
-        "_blank",
-        "noopener,noreferrer"
-      );
+  /*
+   * Use a temporary real link instead of checking the
+   * return value of window.open().
+   *
+   * Some browsers return null when noopener is used,
+   * even when the new tab opens successfully.
+   */
+  const link = document.createElement("a");
 
-      if (newWindow) {
-        newWindow.opener = null;
-      } else {
-        setScanResult(
-          "The browser blocked the new tab. Allow pop-ups and try again.",
-          "error"
-        );
-      }
-    }
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.style.display = "none";
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setScanResult(
+    "Link opened in a new tab.",
+    "success"
+  );
+}
 
     async function handleScannedValue(decodedText) {
       if (scanResultHandled) {
