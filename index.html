@@ -2256,172 +2256,237 @@
     }
 
     async function createPosterPng(
-      model,
-      large,
-      activeLogo,
-      logoPercent,
-      contentValue
-    ) {
-      const width = large ? 3508 : 2480;
-      const height = large ? 4961 : 3508;
+  model,
+  large,
+  activeLogo,
+  logoPercent,
+  contentValue
+) {
+  const width = large ? 3508 : 2480;
+  const height = large ? 4961 : 3508;
 
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
+  const canvas = document.createElement("canvas");
 
-      const ctx = canvas.getContext("2d", {
-        alpha: false
-      });
+  canvas.width = width;
+  canvas.height = height;
 
-      if (!ctx) {
-        throw new Error("Canvas is not supported.");
-      }
+  const ctx = canvas.getContext("2d", {
+    alpha: false
+  });
 
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, width, height);
+  if (!ctx) {
+    throw new Error("Canvas is not supported.");
+  }
 
-      const margin =
-        Math.round(width * 0.085);
+  /*
+   * Apply a consistent alignment to all poster text.
+   * This must be set even when Heading is empty.
+   */
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
 
-      const cardX = margin;
-      const cardY = margin;
-      const cardWidth = width - margin * 2;
-      const cardHeight = height - margin * 2;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
 
-      ctx.strokeStyle = "#aebbc7";
-      ctx.lineWidth =
-        Math.max(3, Math.round(width * 0.0015));
+  const margin =
+    Math.round(width * 0.085);
 
-      drawRoundRect(
+  const cardX = margin;
+  const cardY = margin;
+  const cardWidth = width - margin * 2;
+  const cardHeight = height - margin * 2;
+
+  ctx.strokeStyle = "#aebbc7";
+
+  ctx.lineWidth =
+    Math.max(
+      3,
+      Math.round(width * 0.0015)
+    );
+
+  drawRoundRect(
+    ctx,
+    cardX,
+    cardY,
+    cardWidth,
+    cardHeight,
+    Math.round(width * 0.015)
+  );
+
+  ctx.stroke();
+
+  const centerX = width / 2;
+
+  let y =
+    cardY +
+    Math.round(height * 0.08);
+
+  const heading =
+    sanitizeText(
+      el("deptName").value
+    );
+
+  const subheading =
+    sanitizeText(
+      el("labelText").value
+    );
+
+  /*
+   * Heading
+   */
+  if (heading) {
+    ctx.fillStyle = "#0a2238";
+
+    ctx.font =
+      `800 ${Math.round(
+        width * 0.033
+      )}px Inter, Arial`;
+
+    const headingLines =
+      wrapCanvasText(
         ctx,
-        cardX,
-        cardY,
-        cardWidth,
-        cardHeight,
-        Math.round(width * 0.015)
+        heading,
+        cardWidth * 0.78,
+        2
       );
 
-      ctx.stroke();
+    y = drawCenteredLines(
+      ctx,
+      headingLines,
+      centerX,
+      y,
+      Math.round(width * 0.043)
+    );
 
-      const centerX = width / 2;
-      let y = cardY + Math.round(height * 0.08);
+    y +=
+      Math.round(height * 0.008);
+  }
 
-      const heading =
-        sanitizeText(el("deptName").value);
+  /*
+   * Subheading
+   */
+  if (subheading) {
+    ctx.fillStyle = "#5f7181";
 
-      const subheading =
-        sanitizeText(el("labelText").value);
+    ctx.font =
+      `500 ${Math.round(
+        width * 0.018
+      )}px Inter, Arial`;
 
-      if (heading) {
-        ctx.fillStyle = "#0a2238";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "top";
-        ctx.font =
-          `800 ${Math.round(width * 0.033)}px Inter, Arial`;
-
-        const headingLines = wrapCanvasText(
-          ctx,
-          heading,
-          cardWidth * 0.78,
-          2
-        );
-
-        y = drawCenteredLines(
-          ctx,
-          headingLines,
-          centerX,
-          y,
-          Math.round(width * 0.043)
-        );
-
-        y += Math.round(height * 0.008);
-      }
-
-      if (subheading) {
-        ctx.fillStyle = "#5f7181";
-        ctx.font =
-          `500 ${Math.round(width * 0.018)}px Inter, Arial`;
-
-        const subheadingLines = wrapCanvasText(
-          ctx,
-          subheading,
-          cardWidth * 0.78,
-          3
-        );
-
-        y = drawCenteredLines(
-          ctx,
-          subheadingLines,
-          centerX,
-          y,
-          Math.round(width * 0.027)
-        );
-
-        y += Math.round(height * 0.016);
-      }
-
-      const qrSize =
-        Math.min(
-          Math.round(width * 0.69),
-          Math.round(height * 0.49)
-        );
-
-      const qrCanvas =
-        await createQrOnlyPng(
-          model,
-          qrSize,
-          activeLogo,
-          logoPercent
-        );
-
-      const qrX =
-        Math.round((width - qrSize) / 2);
-
-      ctx.drawImage(
-        qrCanvas,
-        qrX,
-        y,
-        qrSize,
-        qrSize
+    const subheadingLines =
+      wrapCanvasText(
+        ctx,
+        subheading,
+        cardWidth * 0.78,
+        3
       );
 
-      y += qrSize + Math.round(height * 0.025);
+    y = drawCenteredLines(
+      ctx,
+      subheadingLines,
+      centerX,
+      y,
+      Math.round(width * 0.027)
+    );
 
-      if (el("toggleUrlText").checked) {
-        ctx.fillStyle = "#5f7181";
-        ctx.font =
-          `500 ${Math.round(width * 0.012)}px Inter, Arial`;
+    y +=
+      Math.round(height * 0.016);
+  }
 
-        const urlLines = wrapCanvasText(
-          ctx,
-          contentValue,
-          cardWidth * 0.78,
-          3
-        );
+  /*
+   * Add a little upper spacing when no title is entered.
+   */
+  if (!heading && !subheading) {
+    y +=
+      Math.round(height * 0.015);
+  }
 
-        y = drawCenteredLines(
-          ctx,
-          urlLines,
-          centerX,
-          y,
-          Math.round(width * 0.019)
-        );
+  /*
+   * QR code
+   */
+  const qrSize =
+    Math.min(
+      Math.round(width * 0.69),
+      Math.round(height * 0.49)
+    );
 
-        y += Math.round(height * 0.012);
-      }
+  const qrCanvas =
+    await createQrOnlyPng(
+      model,
+      qrSize,
+      activeLogo,
+      logoPercent
+    );
 
-      ctx.fillStyle = "#42586a";
-      ctx.font =
-        `600 ${Math.round(width * 0.015)}px Inter, Arial`;
+  const qrX =
+    Math.round(
+      (width - qrSize) / 2
+    );
 
-      ctx.fillText(
-        "Sila imbas menggunakan kamera telefon atau pengimbas QR.",
-        centerX,
-        y
+  ctx.drawImage(
+    qrCanvas,
+    qrX,
+    y,
+    qrSize,
+    qrSize
+  );
+
+  y +=
+    qrSize +
+    Math.round(height * 0.025);
+
+  /*
+   * Optional destination text
+   */
+  if (el("toggleUrlText").checked) {
+    ctx.fillStyle = "#5f7181";
+
+    ctx.font =
+      `500 ${Math.round(
+        width * 0.012
+      )}px Inter, Arial`;
+
+    const urlLines =
+      wrapCanvasText(
+        ctx,
+        contentValue,
+        cardWidth * 0.78,
+        3
       );
 
-      return canvas;
-    }
+    y = drawCenteredLines(
+      ctx,
+      urlLines,
+      centerX,
+      y,
+      Math.round(width * 0.019)
+    );
+
+    y +=
+      Math.round(height * 0.012);
+  }
+
+  /*
+   * Scanning instruction
+   */
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+
+  ctx.fillStyle = "#42586a";
+
+  ctx.font =
+    `600 ${Math.round(
+      width * 0.015
+    )}px Inter, Arial`;
+
+  ctx.fillText(
+    "Sila imbas menggunakan kamera telefon atau pengimbas QR.",
+    centerX,
+    y
+  );
+
+  return canvas;
+}
 
     async function imageToDataUrl(src) {
       if (!src) {
